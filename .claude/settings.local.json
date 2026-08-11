@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(cat C:\\\\\\\\Users\\\\\\\\lehig\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Temp\\\\\\\\claude\\\\\\\\C--Users-lehig-english-passage-app\\\\\\\\b8bf94ae-0133-44ef-a2c4-323d2a70f9c6\\\\\\\\tasks\\\\\\\\bnh0988a5.output)",
+      "Bash(git config *)",
+      "Bash(git init *)",
+      "Bash(git add *)"
+    ]
+  }
+}
