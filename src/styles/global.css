@@ -71,6 +71,10 @@
   --s-xxl: 48px;
   --s-section: 96px;
 
+  /* ---- easing ---- */
+  /* 기본 CSS 이징은 힘이 약하다. 들어오고 나가는 UI는 처음이 빠른 곡선이라야 즉각 반응한 느낌이 난다. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+
   /* ---- elevation — 단일 tier ---- */
   --shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
   --shadow-overlay: 0 24px 64px rgba(10, 11, 13, 0.24);
@@ -142,14 +146,15 @@ table.vocab td.num,
  * 두 검은 면을 같은 색으로 두면 한 덩어리로 뭉쳐 보이므로 한 단계 차이로 층을 만든다.
  */
 .app-header {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--s-md);
-  height: 92px;
+  height: 64px;
   flex-shrink: 0;
   padding: 0 var(--s-lg);
   background: var(--surface-dark-elevated);
-  border-bottom: 1px solid #24272d;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   z-index: 20;
 }
 
@@ -163,47 +168,57 @@ table.vocab td.num,
 /**
  * 로고는 흰 배경이 들어간 원본이라 어두운 헤더 위에 그냥 얹으면 흰 사각형이 된다.
  * 흰 카드(플레이트) 위에 올려 의도된 배지처럼 보이게 한다 — 문서의 card-on-card 레이어링.
- * 로고 안 "정상어학원" 글자 높이가 약 20pt(≈27px)가 되도록 이미지 높이를 잡았다.
+ * 원본이 2014×498(약 4:1)이라 높이를 키우면 폭이 그 네 배로 늘어 헤더를 잡아먹는다.
+ * 헤더 높이의 절반 아래로 눌러야 브랜드가 소리치지 않고 배지로 읽힌다.
  */
 .brand-logo {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  padding: 5px 12px;
-  border-radius: var(--r-md);
+  padding: 4px 9px;
+  border-radius: var(--r-sm);
   background: var(--canvas);
   overflow: hidden;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
 .brand-logo img {
   display: block;
-  height: 70px;
+  height: 26px;
   width: auto;
 }
 
+/**
+ * 로고 폭과 오른쪽 단계 칩의 폭이 서로 달라 flex 흐름 안에서는 진짜 중앙이 나오지 않는다.
+ * 흐름에서 빼내 헤더 기준 50% 지점에 고정해야 화면 폭의 정중앙에 놓인다.
+ */
 .brand-titles {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   flex-direction: column;
+  align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 1px;
   min-width: 0;
+  text-align: center;
 }
 
-/* 20pt = 26.7px */
 .brand h1 {
   margin: 0;
-  font-size: 26.7px;
+  font-size: 18px;
   font-weight: 600;
-  letter-spacing: -0.6px;
-  line-height: 1.15;
+  letter-spacing: -0.2px;
+  line-height: 1.2;
   color: var(--on-dark);
   white-space: nowrap;
 }
 
+/* 타이틀보다 확실히 한 단계 낮게 — 자간을 벌려 작은 글씨가 뭉치지 않게 한다 */
 .brand .brand-sub {
-  font-size: 13px;
+  font-size: 11.5px;
   font-weight: 400;
+  letter-spacing: 0.02em;
   color: var(--on-dark-soft);
   white-space: nowrap;
 }
@@ -238,7 +253,12 @@ table.vocab td.num,
   color: var(--on-dark-soft);
   font-size: 14px;
   font-weight: 500;
-  transition: background 0.14s, color 0.14s, box-shadow 0.14s;
+  transition: background 0.14s, color 0.14s, box-shadow 0.14s, transform 0.14s var(--ease-out);
+}
+
+/* 눌리는 순간 살짝 줄어야 인터페이스가 입력을 들었다는 느낌이 난다 */
+.step-chip:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .step-chip .step-no {
@@ -516,33 +536,18 @@ table.vocab td.num,
 }
 
 /* hero-band-dark — 문서의 시그니처 패턴. 작업 화면이므로 밴드 높이를 눌러 쓴다. */
-.setup-hero {
-  background: var(--surface-dark);
-  color: var(--on-dark);
-  padding: 28px var(--s-lg);
-}
-
-.setup-hero-inner {
-  max-width: 1200px;
+/**
+ * 검은 헤더 바로 아래 또 하나의 검은 밴드를 두면 두 면이 뭉쳐 화면이 무거워진다.
+ * 어두운 면은 헤더 하나로 끝내고, 안내는 흰 캔버스 위 가운데 리드 문단으로 둔다.
+ * 문단 폭을 620px로 묶는 것은 장식이 아니라 가독성 문제다 — 한 줄이 길면 눈이 다음 줄을 놓친다.
+ */
+.setup-lead {
+  max-width: 620px;
   margin: 0 auto;
-}
-
-/* display-sm */
-.setup-hero h2 {
-  margin: 0;
-  font-size: 36px;
-  font-weight: 400;
-  line-height: 1.05;
-  letter-spacing: -0.9px;
-  color: var(--on-dark);
-}
-
-.setup-hero p {
-  max-width: 720px;
-  margin: 10px 0 0;
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--on-dark-soft);
+  text-align: center;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--body);
 }
 
 .setup-inner {
@@ -561,7 +566,7 @@ table.vocab td.num,
   padding: var(--s-xxl) var(--s-lg);
   text-align: center;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.18s var(--ease-out), background 0.18s var(--ease-out);
 }
 
 .dropzone:hover,
@@ -570,9 +575,23 @@ table.vocab td.num,
   background: rgba(0, 82, 255, 0.03);
 }
 
+/* 이모지는 OS마다 그림이 달라 화면 안에서 혼자 다른 시스템처럼 보인다 — 선 아이콘으로 통일한다 */
 .dropzone .dz-icon {
-  font-size: 28px;
+  display: flex;
+  justify-content: center;
   line-height: 1;
+  color: var(--muted-soft);
+  transition: color 0.18s var(--ease-out);
+}
+
+.dropzone .dz-icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+.dropzone:hover .dz-icon,
+.dropzone.over .dz-icon {
+  color: var(--primary);
 }
 
 /* title-md */
@@ -588,6 +607,10 @@ table.vocab td.num,
   margin-top: var(--s-sm);
   color: var(--muted);
   font-size: 14px;
+}
+
+.dropzone .dz-paste {
+  margin-top: var(--s-base);
 }
 
 .field-row {
@@ -713,7 +736,8 @@ table.vocab td.num,
   overflow: hidden;
 }
 
-.pdf-panel textarea {
+.pdf-panel textarea,
+.paste-panel textarea {
   width: 100%;
   min-height: 240px;
   padding: var(--s-base);
@@ -727,7 +751,8 @@ table.vocab td.num,
   resize: vertical;
 }
 
-.pdf-panel textarea:focus {
+.pdf-panel textarea:focus,
+.paste-panel textarea:focus {
   outline: none;
   border: 2px solid var(--primary);
   padding: 15px;
@@ -1455,16 +1480,16 @@ table.vocab td.num,
 }
 
 .modal header {
-  padding: var(--s-xl) var(--s-xl) var(--s-base);
+  padding: var(--s-lg) var(--s-xl) var(--s-sm);
 }
 
-/* display-sm */
+/* 제목이 32px일 때 쓰던 얇은 굵기와 넓은 자간은 작은 크기에서 힘이 빠진다 — 같이 조인다 */
 .modal header h3 {
   margin: 0;
-  font-size: 32px;
-  font-weight: 400;
-  line-height: 1.13;
-  letter-spacing: -0.4px;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.2px;
   color: var(--ink);
 }
 

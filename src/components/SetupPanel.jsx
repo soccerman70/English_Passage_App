@@ -31,6 +31,7 @@ export default function SetupPanel() {
   const [error, setError] = useState('')
   const [dragOver, setDragOver] = useState(false)
   const [pdfDraft, setPdfDraft] = useState(null) // { text, fileName, pageCount }
+  const [textDraft, setTextDraft] = useState(null) // 붙여넣기 입력창 내용. null이면 닫힌 상태
   const [health, setHealth] = useState(null)
   const inputRef = useRef(null)
 
@@ -47,6 +48,7 @@ export default function SetupPanel() {
       }
       loadPassages({ passages: found, rawText: text, fileInfo: info, splitMethod: method })
       setPdfDraft(null)
+      setTextDraft(null)
       setError('')
     },
     [loadPassages]
@@ -85,17 +87,12 @@ export default function SetupPanel() {
 
   return (
     <div className="setup">
-      <div className="setup-hero">
-        <div className="setup-hero-inner">
-          <h2>지문에서 심화단어장까지</h2>
-          <p>
-            지문 파일(.docx)을 올리면 한글 해석을 걸러내고 영어 본문만 카드로 만듭니다. PDF는 텍스트로 변환한 뒤
-            사용할 수 있습니다.
-          </p>
-        </div>
-      </div>
-
       <div className="setup-inner">
+        <p className="setup-lead">
+          지문 파일, 독해 문항 파일을 올린 후, 어휘를 직접 지정하거나 AI 자동지정으로 원하는 수의 표제 어휘를 만든 후,
+          JLS 표준 심화 단어장을 생성할 수 있습니다.
+        </p>
+
         {/* 1. 파일 입력 */}
         <div
           className={`dropzone${dragOver ? ' over' : ''}`}
@@ -126,9 +123,33 @@ export default function SetupPanel() {
             </>
           ) : (
             <>
-              <div className="dz-icon">📄</div>
+              <div className="dz-icon">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M13.5 3v4.5a1 1 0 0 0 1 1H19" />
+                  <path d="M19 9.2V19a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6.3L19 9.2Z" />
+                  <path d="M8.75 13.5h6.5M8.75 17h4" />
+                </svg>
+              </div>
               <div className="dz-main">지문 파일을 여기에 끌어다 놓거나 클릭해서 고르세요</div>
               <div className="dz-sub">.docx 권장 · .pdf 는 텍스트 변환 후 사용 · .txt 도 가능</div>
+              {/* 드롭존 전체가 파일 선택 버튼이므로 클릭이 위로 번지지 않게 막는다 */}
+              <button
+                className="btn sm dz-paste"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setTextDraft('')
+                }}
+              >
+                텍스트 붙여넣기
+              </button>
             </>
           )}
         </div>
@@ -168,6 +189,38 @@ export default function SetupPanel() {
                   TXT로 저장
                 </button>
                 <button className="btn ghost" onClick={() => setPdfDraft(null)}>
+                  취소
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 2-b. 붙여넣은 텍스트 확인 */}
+        {textDraft !== null && (
+          <div className="panel paste-panel">
+            <div className="panel-title">텍스트 붙여넣기</div>
+            <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <p className="hint" style={{ margin: 0 }}>
+                복사한 지문을 아래에 붙여넣으세요. 지문 사이는 빈 줄로 띄우거나 <strong>1. 2. 3.</strong> 같은 번호를
+                붙이면 더 정확히 나뉩니다.
+              </p>
+              <textarea
+                autoFocus
+                value={textDraft}
+                onChange={(e) => setTextDraft(e.target.value)}
+                placeholder="여기에 붙여넣기 (Ctrl+V)"
+                spellCheck={false}
+              />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  className="btn primary"
+                  disabled={!textDraft.trim()}
+                  onClick={() => ingestText(textDraft, { name: '붙여넣은 텍스트', kind: 'txt' })}
+                >
+                  이 텍스트로 지문 만들기
+                </button>
+                <button className="btn ghost" onClick={() => setTextDraft(null)}>
                   취소
                 </button>
               </div>
@@ -246,8 +299,8 @@ export default function SetupPanel() {
                 <div className="field">
                   <label htmlFor="model">AI 모델</label>
                   <select id="model" value={model} onChange={(e) => setModel(e.target.value)}>
-                    <option value="claude-opus-5">Opus 5 (정확도 우선)</option>
                     <option value="claude-sonnet-5">Sonnet 5 (속도 우선)</option>
+                    <option value="claude-opus-5">Opus 5 (정확도 우선)</option>
                   </select>
                 </div>
               </div>
