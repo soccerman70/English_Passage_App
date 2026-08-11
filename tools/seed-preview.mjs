@@ -75,7 +75,7 @@ function baseForm(s) {
 const antonymCount = rows.filter((r) => r.antonyms.length).length
 const state = {
   state: {
-    step: MODE === 'result' ? 'result' : 'select',
+    step: ['input', 'select', 'result'].includes(MODE) ? MODE : 'select',
     fileInfo: { name: '샘플지문.docx', kind: 'docx' }, rawText: text,
     passages, splitMethod: method, targetCount: 20, mode: 'manual', model: 'claude-opus-5',
     focusedId: passages[0].id, selections,

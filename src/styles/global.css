@@ -689,11 +689,7 @@ table.vocab td.num,
   margin-bottom: 6px;
 }
 
-.passage-preview .pp-no {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--ink);
-}
+/* 번호는 .pno-badge 가 담당한다 (검은 박스 + 노란 글씨) */
 
 .passage-preview .pp-meta {
   font-size: 13px;
@@ -923,11 +919,25 @@ table.vocab td.num,
   border-bottom: 1px solid var(--hairline-soft);
 }
 
+/* 지문 번호 배지 — 검은 박스 + 노란 글씨. 지문 카드와 선택 목록에서 함께 쓴다. */
+.pno-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border-radius: var(--r-sm);
+  background: var(--surface-dark);
+  color: var(--accent-yellow);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+}
+
 .card-head .c-no {
   flex-shrink: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--ink);
 }
 
 .card-head .c-peek {

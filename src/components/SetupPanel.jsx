@@ -191,7 +191,7 @@ export default function SetupPanel() {
               {passages.map((p, i) => (
                 <div className="passage-preview" key={p.id}>
                   <header>
-                    <span className="pp-no">지문 {p.no}</span>
+                    <span className="pp-no pno-badge">지문 {p.no}</span>
                     <span className="pp-meta">
                       {countWords(p.english)} 단어{p.korean ? ' · 해석 있음' : ' · 해석 없음'}
                     </span>

@@ -49,7 +49,7 @@ function PassageCard({ passage, selections, focused, showKorean, onFocus, onTogg
     return (
       <div className="card" ref={cardRef}>
         <div className="card-head" onClick={() => onFocus(passage.id)}>
-          <span className="c-no">지문 {passage.no}</span>
+          <span className="c-no pno-badge">지문 {passage.no}</span>
           <span className="c-peek">{passage.english}</span>
           <span className="c-badges">
             {selections.length > 0 && <span className="count-pill">{selections.length}</span>}
@@ -63,7 +63,7 @@ function PassageCard({ passage, selections, focused, showKorean, onFocus, onTogg
   return (
     <div className="card focused" ref={cardRef}>
       <div className="card-head" onClick={() => onFocus(null)}>
-        <span className="c-no">지문 {passage.no}</span>
+        <span className="c-no pno-badge">지문 {passage.no}</span>
         <span className="c-peek" style={{ color: 'var(--text-muted)' }}>
           클릭 = 단어 선택 · 드래그 = 어구 선택 · 다시 클릭 = 해제
         </span>
