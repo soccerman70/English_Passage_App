@@ -38,48 +38,85 @@ export function autoSelect({ passages, targetCount, model, exclude = [] }) {
 }
 
 /**
- * 표제어 정규화 + 파생어/유의어/반의어 생성.
- * 배치로 나눠 순차 호출하고 진행률을 알린다.
+ * 배치를 동시에 몇 개까지 던질지.
+ * 배치끼리는 서로 의존이 없어 기다릴 이유가 없다. 실측(tools/bench-enrich.mjs)에서
+ * 3개 동시 실행이 순차 대비 2.54배 — 이론 최대 3배의 85% — 로 나왔다.
  */
-export async function enrichAll({ items, model, batchSize = 25, onProgress, signal }) {
+const CONCURRENCY = 4
+
+/**
+ * 표제어 정규화 + 파생어/유의어/반의어 생성.
+ * 배치로 나눠 동시에 호출하고 진행률을 알린다.
+ */
+export async function enrichAll({ items, model, batchSize = 25, concurrency = CONCURRENCY, onProgress, signal }) {
   const batches = []
   for (let i = 0; i < items.length; i += batchSize) {
     batches.push(items.slice(i, i + batchSize))
   }
 
-  const merged = []
+  // 끝나는 순서는 뒤섞이지만 결과는 입력 순서를 지켜야 한다. 배치별 자리를 미리 잡아두고 제자리에 채운다.
+  const perBatch = new Array(batches.length).fill(null)
+  // durationMs 는 이제 벽시계가 아니라 각 배치 소요의 합이다. 동시 실행이라 실제 경과는 이보다 짧다.
   const usage = { inputTokens: 0, outputTokens: 0, cacheCreation: 0, durationMs: 0 }
+  let doneItems = 0
+  let doneBatches = 0
 
-  for (let b = 0; b < batches.length; b += 1) {
-    if (signal?.aborted) throw new Error('사용자가 취소했습니다.')
-    onProgress?.({ phase: 'running', batch: b + 1, batchCount: batches.length, done: merged.length, total: items.length })
-
-    const payload = batches[b].map((it) => ({
-      id: it.id,
-      surface: it.surface,
-      passageNo: it.passageNo,
-      sentence: it.sentence,
-    }))
-
-    const { results, usage: u, durationMs } = await post('enrich', {
-      items: payload,
-      antonymTargetRatio: ANTONYM_TARGET_RATIO,
-      model,
+  const report = (phase) =>
+    onProgress?.({
+      phase,
+      batch: doneBatches,
+      batchCount: batches.length,
+      done: doneItems,
+      total: items.length,
     })
 
-    if (u) {
-      usage.inputTokens += u.input_tokens || 0
-      usage.outputTokens += u.output_tokens || 0
-      usage.cacheCreation += u.cache_creation_input_tokens || 0
-    }
-    usage.durationMs += durationMs || 0
+  report('running')
 
-    merged.push(...normalizeBatch(results, batches[b]))
-    onProgress?.({ phase: 'running', batch: b + 1, batchCount: batches.length, done: merged.length, total: items.length })
+  let cursor = 0
+  async function worker() {
+    for (;;) {
+      const index = cursor
+      cursor += 1
+      if (index >= batches.length) return
+      if (signal?.aborted) throw new Error('사용자가 취소했습니다.')
+
+      const payload = batches[index].map((it) => ({
+        id: it.id,
+        surface: it.surface,
+        passageNo: it.passageNo,
+        sentence: it.sentence,
+      }))
+
+      const { results, usage: u, durationMs } = await post('enrich', {
+        items: payload,
+        antonymTargetRatio: ANTONYM_TARGET_RATIO,
+        model,
+      })
+
+      if (u) {
+        usage.inputTokens += u.input_tokens || 0
+        usage.outputTokens += u.output_tokens || 0
+        usage.cacheCreation += u.cache_creation_input_tokens || 0
+      }
+      usage.durationMs += durationMs || 0
+
+      perBatch[index] = normalizeBatch(results, batches[index])
+      doneItems += perBatch[index].length
+      doneBatches += 1
+      report('running')
+    }
   }
 
-  const trimmed = enforceAntonymRatio(merged)
-  onProgress?.({ phase: 'done', batch: batches.length, batchCount: batches.length, done: trimmed.rows.length, total: items.length })
+  await Promise.all(Array.from({ length: Math.min(concurrency, batches.length) }, worker))
+
+  const trimmed = enforceAntonymRatio(perBatch.flat())
+  onProgress?.({
+    phase: 'done',
+    batch: batches.length,
+    batchCount: batches.length,
+    done: trimmed.rows.length,
+    total: items.length,
+  })
 
   return { rows: trimmed.rows, antonymStats: trimmed.stats, usage }
 }

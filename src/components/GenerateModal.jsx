@@ -9,7 +9,7 @@ export default function GenerateModal({ selections, targetCount, model, busy, pr
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
       <div className="modal">
         <header>
-          <h3>파생어–유의어–반의어 목록을 생성할까요?</h3>
+          <h3>{busy ? '심화 단어장 생성 중' : '심화 단어장 생성'}</h3>
         </header>
 
         <div className="modal-body">
@@ -57,15 +57,14 @@ export default function GenerateModal({ selections, targetCount, model, busy, pr
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span className="spinner dark" />
                 <span>
-                  생성 중… 배치 {progress?.batch ?? 0}/{progress?.batchCount ?? '?'} · {progress?.done ?? 0}/
-                  {progress?.total ?? stats.total}개 완료
+                  {progress?.done ?? 0} / {progress?.total ?? stats.total}개 완료
                 </span>
               </div>
               <div className="progress-bar" style={{ marginTop: 8 }}>
                 <i style={{ width: `${progress?.total ? (progress.done / progress.total) * 100 : 0}%` }} />
               </div>
               <p className="hint" style={{ margin: '8px 0 0' }}>
-                {model} 사용 · 25개씩 나눠 처리합니다. 창을 닫지 마세요.
+                {model} 사용 · {progress?.batchCount ?? '?'}개 묶음을 동시에 처리합니다. 창을 닫지 마세요.
               </p>
             </div>
           )}
