@@ -16,7 +16,7 @@ const CLAUDE_BIN = process.env.CLAUDE_BIN || (IS_WIN ? 'claude.cmd' : 'claude')
 
 // Windows에서는 셸을 거쳐 실행되므로 인자로 나가는 값은 반드시 허용 목록으로 막는다.
 const ALLOWED_MODELS = ['claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4-5-20251001']
-const DEFAULT_MODEL = 'claude-opus-5'
+const DEFAULT_MODEL = 'claude-sonnet-5'
 
 function safeModel(model) {
   return ALLOWED_MODELS.includes(model) ? model : DEFAULT_MODEL
@@ -221,7 +221,21 @@ export function claudeBridge() {
 
         try {
           const body = req.method === 'POST' ? await readBody(req) : {}
+          const startedAt = Date.now()
           const result = await handler(body)
+
+          // 어디에 시간이 쓰이는지는 추측으로 알 수 없다. 왕복 시간과 토큰을 남겨 근거로 삼는다.
+          if (result?.usage) {
+            const u = result.usage
+            const wall = ((Date.now() - startedAt) / 1000).toFixed(1)
+            const out = u.output_tokens || 0
+            server.config.logger.info(
+              `[claude-bridge] ${route} ${wall}s · 입력 ${u.input_tokens || 0} · 출력 ${out}` +
+                ` · 캐시읽기 ${u.cache_read_input_tokens || 0} · 캐시생성 ${u.cache_creation_input_tokens || 0}` +
+                ` · ${(out / Math.max(Number(wall), 0.1)).toFixed(0)} tok/s`
+            )
+          }
+
           sendJson(res, 200, result)
         } catch (err) {
           server.config.logger.error(`[claude-bridge] ${route}: ${err.message}`)

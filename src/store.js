@@ -20,7 +20,7 @@ const initial = {
 
   targetCount: 100,
   mode: 'manual', // manual | ai
-  model: 'claude-opus-5',
+  model: 'claude-sonnet-5',
 
   focusedId: null,
   selections: [],
@@ -123,7 +123,10 @@ export const useStore = create(
     }),
     {
       name: 'jls-vocab-store',
-      version: 1,
+      // v2 — 기본 모델을 Sonnet으로 내렸다. 저장된 상태가 옛 기본값(Opus)을 붙들고 있으면
+      // 기본값을 바꿔도 이미 쓰던 브라우저에는 영영 반영되지 않으므로 한 번 덮어쓴다.
+      version: 2,
+      migrate: (state, from) => (from < 2 ? { ...state, model: initial.model } : state),
       partialize: (s) => ({
         step: s.step,
         fileInfo: s.fileInfo,
