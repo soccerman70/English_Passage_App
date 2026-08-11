@@ -1600,7 +1600,7 @@ table.vocab {
   width: 100%;
   min-width: 1360px;
   table-layout: fixed;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 /* 헤더는 색을 쓰지 않는다 — 브랜드 블루는 CTA에만 */
@@ -1611,7 +1611,7 @@ table.vocab th {
   padding: 12px var(--s-sm);
   background: var(--surface-strong);
   color: var(--ink);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.02em;
   text-align: left;
@@ -1634,7 +1634,7 @@ table.vocab tr:hover td {
 table.vocab td.num {
   width: 46px;
   text-align: center;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--muted-soft);
 }
 
@@ -1643,14 +1643,15 @@ table.vocab td.headword {
 }
 
 textarea.cell-edit.hw {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--ink);
 }
 
+/* 출처 문장은 훑어보는 참고 정보라 표의 다른 글자보다 한 단계 더 낮춘다 */
 table.vocab td.sentence {
   min-width: 300px;
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.5;
   color: var(--body);
 }
@@ -1678,7 +1679,7 @@ table.vocab .mark {
   border-radius: var(--r-sm);
   background: transparent;
   color: var(--ink);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
   resize: vertical;
 }
@@ -1707,7 +1708,7 @@ textarea.cell-edit.auto {
 .norm-note {
   display: block;
   padding-left: 6px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   color: var(--primary);
   white-space: nowrap;
@@ -1719,4 +1720,30 @@ textarea.cell-edit.auto {
 
 .row-warn td:first-child {
   box-shadow: inset 3px 0 0 var(--accent-yellow);
+}
+
+/**
+ * 툴바 부품은 1·2단계와 공유한다. 값을 직접 낮추면 다른 화면까지 따라 작아지므로
+ * 이 화면 안에서만 덮어쓴다.
+ * .btn.sm 은 .result-view .btn 과 특이성이 같아(둘 다 0,2,0) 따로 적어야 이긴다.
+ */
+.result-view .btn {
+  font-size: 15px;
+}
+
+.result-view .btn.sm {
+  font-size: 13px;
+}
+
+.result-view .hint {
+  font-size: 13px;
+}
+
+.result-view .count-pill {
+  font-size: 11px;
+}
+
+.result-view .error-box,
+.result-view .notice-box {
+  font-size: 13px;
 }
