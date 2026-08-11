@@ -10,6 +10,7 @@ export default function SelectionPanel({
   onClear,
   onGenerate,
   canGenerate,
+  duplicates,
 }) {
   const sorted = useMemo(() => sortSelections(selections), [selections])
   const count = sorted.length
@@ -68,12 +69,15 @@ export default function SelectionPanel({
               {items.map((sel) => (
                 <div
                   key={sel.id}
-                  className={`sel-item${sel.origin === 'ai' ? ' ai' : ''}`}
+                  className={`sel-item${sel.origin === 'ai' ? ' ai' : ''}${
+                    duplicates?.flaggedIds?.has(sel.id) ? ' dup' : ''
+                  }`}
                   onClick={() => onFocusPassage(sel.passageId)}
-                  title={sel.sentence}
+                  title={dupTitle(duplicates, sel) || sel.sentence}
                 >
                   <span className="idx">{sel.order}</span>
                   <span className="surface">{sel.surface}</span>
+                  {duplicates?.flaggedIds?.has(sel.id) && <span className="dup-tag">중복</span>}
                   <span className="pos-tag">{sel.pos}</span>
                   <button
                     className="rm"
@@ -92,6 +96,12 @@ export default function SelectionPanel({
         )}
       </div>
 
+      {duplicates?.total > 0 && (
+        <div className="dup-summary">
+          중복 의심 {duplicates.total}건 — 생성 전 확인 창에서 정리할 수 있습니다.
+        </div>
+      )}
+
       <div className="panel-footer">
         <button className="btn primary" disabled={!canGenerate} onClick={onGenerate}>
           파생어·유의어·반의어 생성 →
@@ -104,4 +114,19 @@ export default function SelectionPanel({
       </div>
     </div>
   )
+}
+
+/** 이 항목이 무엇과 겹치는지 마우스를 올렸을 때 알려준다. */
+function dupTitle(duplicates, sel) {
+  if (!duplicates?.flaggedIds?.has(sel.id)) return ''
+
+  const others = (group) => group.filter((s) => s.id !== sel.id).map((s) => s.surface).join(', ')
+
+  const exact = duplicates.exact.find((g) => g.some((s) => s.id === sel.id))
+  if (exact) return `${others(exact)} 와(과) 같은 표제어가 됩니다`
+
+  const derived = duplicates.derived.find((g) => g.some((s) => s.id === sel.id))
+  if (derived) return `${others(derived)} 와(과) 같은 뿌리에서 나온 말입니다`
+
+  return ''
 }

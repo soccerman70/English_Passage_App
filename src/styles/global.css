@@ -1307,6 +1307,108 @@ table.vocab td.num,
   color: var(--semantic-down);
 }
 
+/* ---- 중복 표시 ----
+ * 오류가 아니라 "봐야 할 것"이므로 결과 표의 누락 줄과 같은 노란 표시를 쓴다.
+ * 빨강은 되돌릴 수 없는 문제에만 쓴다.
+ */
+
+.sel-item.dup {
+  box-shadow: inset 3px 0 0 var(--accent-yellow);
+}
+
+.sel-item .dup-tag {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+  background: rgba(244, 176, 0, 0.18);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.dup-summary {
+  flex-shrink: 0;
+  padding: 8px var(--s-md);
+  border-top: 1px solid var(--tint-select-line);
+  background: rgba(244, 176, 0, 0.12);
+  color: var(--body);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* 생성 확인 창 안의 목록 */
+.dup-box {
+  margin-bottom: 12px;
+  padding: var(--s-sm) var(--s-base);
+  border-radius: var(--r-md);
+  background: rgba(244, 176, 0, 0.09);
+}
+
+.dup-box-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.dup-box-lead {
+  margin: 10px 0 4px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--body);
+}
+
+.dup-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-xs);
+  padding: 3px 0;
+}
+
+.dup-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dup-sep {
+  margin-right: 2px;
+  color: var(--muted-soft);
+  font-family: var(--font-mono);
+}
+
+.dup-word {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* 정규화하면 같아지는 쪽만 밑줄로 한 단계 세게 — 파생형은 판단이 필요할 뿐이다 */
+.dup-row.strong .dup-word {
+  text-decoration: underline;
+  text-decoration-color: var(--accent-yellow);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.dup-passage {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.dup-rm {
+  border: none;
+  background: transparent;
+  padding: 0 2px;
+  color: var(--muted-soft);
+  font-size: 15px;
+  line-height: 1;
+}
+
+.dup-rm:hover {
+  color: var(--semantic-down);
+}
+
 .empty-note {
   padding: var(--s-xxl) var(--s-md);
   text-align: center;

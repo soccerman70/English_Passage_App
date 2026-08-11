@@ -7,6 +7,7 @@ import { useStore, sortSelections } from '../store.js'
 import { tokenize, locateSurface } from '../lib/tokenize.js'
 import { sentenceAt } from '../lib/passages.js'
 import { guessPos, guessLevel } from '../lib/posLite.js'
+import { findDuplicates, inflectionKey } from '../lib/duplicates.js'
 import { autoSelect, enrichAll } from '../lib/aiClient.js'
 
 /** AI가 개수를 못 맞출 때 부족분을 다시 요청하는 최대 횟수 */
@@ -50,6 +51,8 @@ export default function Workspace() {
     return map
   }, [passages, selections])
 
+  const duplicates = useMemo(() => findDuplicates(sortSelections(selections)), [selections])
+
   /* ---------------- AI 자동 추출 ---------------- */
 
   /**
@@ -71,7 +74,9 @@ export default function Workspace() {
     const added = []
     const takenByPassage = new Map()
     const exclude = new Set(kept.map((s) => s.surface.toLowerCase()))
-    const drops = { notFound: 0, clash: 0, noPassage: 0 }
+    // 제외 목록은 프롬프트로 부탁하는 것일 뿐이라 AI 가 지킨다는 보장이 없다. 받은 뒤 여기서 다시 막는다.
+    const takenKeys = new Set(kept.map((s) => inflectionKey(s.surface)).filter(Boolean))
+    const drops = { notFound: 0, clash: 0, noPassage: 0, duplicate: 0 }
     let overshoot = 0
     let rounds = 0
 
@@ -124,8 +129,16 @@ export default function Workspace() {
             continue
           }
 
-          taken.push(hit.start)
           const surface = passage.english.slice(hit.start, hit.end)
+          // 굴절형만 다른 것도 정규화하면 같은 표제어가 된다 (societies ↔ society)
+          const key = inflectionKey(surface)
+          if (key && takenKeys.has(key)) {
+            drops.duplicate += 1
+            continue
+          }
+
+          taken.push(hit.start)
+          takenKeys.add(key)
           const sentence = sentenceAt(passage.english, hit.start)
           exclude.add(surface.toLowerCase())
           added.push({
@@ -151,6 +164,7 @@ export default function Workspace() {
       if (overshoot) notes.push(`초과 제안 ${overshoot}개 잘라냄`)
       if (drops.notFound) notes.push(`지문에서 못 찾음 ${drops.notFound}개`)
       if (drops.clash) notes.push(`이미 고른 자리와 겹침 ${drops.clash}개`)
+      if (drops.duplicate) notes.push(`이미 고른 단어와 중복 ${drops.duplicate}개`)
       if (drops.noPassage) notes.push(`지문 번호 불일치 ${drops.noPassage}개`)
       const detail = notes.length ? ` (${notes.join(' · ')})` : ''
 
@@ -278,6 +292,7 @@ export default function Workspace() {
             setModalOpen(true)
           }}
           canGenerate={selections.length > 0}
+          duplicates={duplicates}
         />
       </div>
 
@@ -293,6 +308,8 @@ export default function Workspace() {
           busy={genBusy}
           progress={genProgress}
           error={genError}
+          duplicates={duplicates}
+          onRemove={removeSelection}
           onConfirm={runGenerate}
           onClose={() => setModalOpen(false)}
         />
