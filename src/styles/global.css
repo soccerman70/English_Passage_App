@@ -576,12 +576,19 @@ table.vocab td.num,
   gap: var(--s-lg);
 }
 
+/**
+ * 텍스트 붙여넣기는 아래에 따로 패널이 열리므로 이 상자는 파일 하나만 받으면 된다.
+ * 세로로 쌓으면 240px가 넘어 화면을 잡아먹는다 — 가로 한 줄로 눕혀 최소 높이로 둔다.
+ */
 .dropzone {
+  display: flex;
+  align-items: center;
+  gap: var(--s-base);
   border: 1px dashed var(--hairline);
-  border-radius: var(--r-xl);
+  border-radius: var(--r-lg);
   background: var(--surface-soft);
-  padding: var(--s-xxl) var(--s-lg);
-  text-align: center;
+  padding: var(--s-sm) var(--s-md);
+  text-align: left;
   cursor: pointer;
   transition: border-color 0.18s var(--ease-out), background 0.18s var(--ease-out);
 }
@@ -595,15 +602,15 @@ table.vocab td.num,
 /* 이모지는 OS마다 그림이 달라 화면 안에서 혼자 다른 시스템처럼 보인다 — 선 아이콘으로 통일한다 */
 .dropzone .dz-icon {
   display: flex;
-  justify-content: center;
+  flex-shrink: 0;
   line-height: 1;
   color: var(--muted-soft);
   transition: color 0.18s var(--ease-out);
 }
 
 .dropzone .dz-icon svg {
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
 }
 
 .dropzone:hover .dz-icon,
@@ -611,23 +618,26 @@ table.vocab td.num,
   color: var(--primary);
 }
 
-/* title-md */
+.dropzone .dz-text {
+  flex: 1;
+  min-width: 0;
+}
+
 .dropzone .dz-main {
-  margin-top: var(--s-sm);
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 600;
-  line-height: 1.33;
+  line-height: 1.35;
   color: var(--ink);
 }
 
 .dropzone .dz-sub {
-  margin-top: var(--s-sm);
+  margin-top: 2px;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .dropzone .dz-paste {
-  margin-top: var(--s-base);
+  flex-shrink: 0;
 }
 
 .field-row {

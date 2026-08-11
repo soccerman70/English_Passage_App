@@ -119,7 +119,9 @@ export default function SetupPanel() {
               <div className="dz-icon">
                 <span className="spinner dark" style={{ display: 'inline-block' }} />
               </div>
-              <div className="dz-main">{busy.label}</div>
+              <div className="dz-text">
+                <div className="dz-main">{busy.label}</div>
+              </div>
             </>
           ) : (
             <>
@@ -138,8 +140,10 @@ export default function SetupPanel() {
                   <path d="M8.75 13.5h6.5M8.75 17h4" />
                 </svg>
               </div>
-              <div className="dz-main">지문 파일을 여기에 끌어다 놓거나 클릭해서 고르세요</div>
-              <div className="dz-sub">.docx 권장 · .pdf 는 텍스트 변환 후 사용 · .txt 도 가능</div>
+              <div className="dz-text">
+                <div className="dz-main">지문 파일을 여기에 끌어다 놓거나 클릭해서 고르세요</div>
+                <div className="dz-sub">.docx 권장 · .pdf 는 텍스트 변환 후 사용 · .txt 도 가능</div>
+              </div>
               {/* 드롭존 전체가 파일 선택 버튼이므로 클릭이 위로 번지지 않게 막는다 */}
               <button
                 className="btn sm dz-paste"
