@@ -584,9 +584,13 @@ table.vocab td.num,
   display: flex;
   align-items: center;
   gap: var(--s-base);
-  border: 1px dashed var(--hairline);
+  /**
+   * 회색 면은 흰 캔버스 위에서 "비활성"으로 읽힌다. 옅은 브랜드 틴트를 깔아
+   * 눌러야 할 자리임을 알린다. 테두리와 배경 모두 같은 파랑에서 농도만 달리 가져간다.
+   */
+  border: 1px solid rgba(0, 82, 255, 0.22);
   border-radius: var(--r-lg);
-  background: var(--surface-soft);
+  background: rgba(0, 82, 255, 0.045);
   padding: var(--s-sm) var(--s-md);
   text-align: left;
   cursor: pointer;
@@ -596,7 +600,7 @@ table.vocab td.num,
 .dropzone:hover,
 .dropzone.over {
   border-color: var(--primary);
-  background: rgba(0, 82, 255, 0.03);
+  background: rgba(0, 82, 255, 0.09);
 }
 
 /* 이모지는 OS마다 그림이 달라 화면 안에서 혼자 다른 시스템처럼 보인다 — 선 아이콘으로 통일한다 */
@@ -604,7 +608,7 @@ table.vocab td.num,
   display: flex;
   flex-shrink: 0;
   line-height: 1;
-  color: var(--muted-soft);
+  color: var(--muted);
   transition: color 0.18s var(--ease-out);
 }
 
@@ -636,8 +640,31 @@ table.vocab td.num,
   font-size: 13px;
 }
 
+/**
+ * 회색 면 위에 흰 버튼을 얹어 한 층 띄운다 — 눌러야 할 것이라는 신호를 색이 아니라 높이로 준다.
+ * 파란색을 쓰지 않는 이유는 상자 전체가 이미 파일 선택 버튼이라 두 개의 주 액션이 경쟁하기 때문이다.
+ */
 .dropzone .dz-paste {
   flex-shrink: 0;
+  border: 1px solid var(--primary);
+  background: var(--canvas);
+  color: var(--ink);
+  box-shadow: 0 1px 1px rgba(10, 11, 13, 0.05), var(--shadow);
+  transition: transform 0.16s var(--ease-out), box-shadow 0.16s var(--ease-out),
+    border-color 0.12s, background 0.12s;
+}
+
+.dropzone .dz-paste:hover:not(:disabled) {
+  border-color: var(--primary-active);
+  background: var(--canvas);
+  box-shadow: 0 2px 3px rgba(10, 11, 13, 0.07), 0 8px 20px rgba(10, 11, 13, 0.1);
+  transform: translateY(-1px);
+}
+
+/* 떠오른 만큼 다시 내려앉아야 눌린 느낌이 난다 */
+.dropzone .dz-paste:active:not(:disabled) {
+  box-shadow: 0 1px 1px rgba(10, 11, 13, 0.05);
+  transform: translateY(0) scale(0.97);
 }
 
 .field-row {
