@@ -157,15 +157,28 @@ export function removePassage(passages, index) {
 /** 문장 단위 분리. 약어(Dr., e.g., U.S.)에서 잘리지 않도록 보호한다. */
 const ABBREV = /\b(?:Mr|Mrs|Ms|Dr|Prof|St|Jr|Sr|vs|etc|e\.g|i\.e|approx|Inc|Ltd|Co|Fig|No|cf)\.$/i
 
+/**
+ * 문장을 닫는 자리 — 마침표 뒤에 따옴표나 괄호가 따라올 수 있다.
+ * 이것을 빠뜨리면 `… are." Then …` 이 한 문장으로 붙어버린다.
+ */
+const SENT_END = '[.!?]["\'’”»)\\]]*'
+
+/**
+ * 다음이 대문자(또는 여는 따옴표+대문자)로 시작할 때만 문장을 나눈다.
+ * `"Stop!" he shouted.` 처럼 인용 뒤에 소문자가 이어지면 아직 한 문장이다.
+ */
+const NEXT_STARTS = '(?=["\'“‘(]?[A-Z0-9가-힣])'
+
 export function splitSentences(text) {
   const out = []
   let buf = ''
-  const parts = String(text).split(/(?<=[.!?])\s+/)
+  const parts = String(text).split(new RegExp(`(?<=${SENT_END})\\s+${NEXT_STARTS}`))
+  const endsSentence = new RegExp(`${SENT_END}$`)
   for (const part of parts) {
     buf = buf ? `${buf} ${part}` : part
     const tail = buf.trimEnd()
     if (ABBREV.test(tail)) continue
-    if (/[.!?]["')\]]?$/.test(tail)) {
+    if (endsSentence.test(tail)) {
       out.push(tail)
       buf = ''
     }

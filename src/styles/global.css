@@ -1912,6 +1912,71 @@ textarea.cell-edit.auto {
   content: '✓';
 }
 
+/* ---- 시험지 화면 ----
+ * 작업용 화면이라 1단계의 마케팅 리듬(위 48px·아래 96px)을 쓰지 않는다.
+ * 한 화면에 점검·배정·문항이 모두 보여야 판단이 빠르다.
+ */
+.quiz-view .setup-inner {
+  padding: var(--s-base) var(--s-lg) var(--s-xl);
+  gap: var(--s-sm);
+}
+
+.quiz-body {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.quiz-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 6px;
+}
+
+.qs-cell {
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  background: var(--surface-soft);
+}
+
+.qs-cell.warn {
+  background: rgba(207, 32, 47, 0.07);
+}
+
+.qs-k {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qs-v {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.qs-cell.warn .qs-v {
+  color: var(--semantic-down);
+}
+
+/* 기준치는 숫자 옆에 붙여 한 줄로 끝낸다 */
+.qs-v em {
+  font-family: var(--font-sans);
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--muted-soft);
+}
+
 /* ---- 시험지 PART 배정 ---- */
 
 .quiz-part {
@@ -1992,6 +2057,106 @@ textarea.cell-edit.auto {
 .qp-empty {
   font-size: 12px;
   color: var(--muted-soft);
+}
+
+/* ---- 시험지 문항 미리보기 ---- */
+
+table.quiz-preview {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+table.quiz-preview td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--hairline-soft);
+  color: var(--body);
+}
+
+table.quiz-preview td.qn {
+  width: 32px;
+  font-family: var(--font-mono);
+  color: var(--muted-soft);
+  text-align: right;
+}
+
+table.quiz-preview td.qa {
+  width: 34%;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.quiz-item {
+  padding: 10px 12px;
+  border: 1px solid var(--hairline-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-soft);
+}
+
+/* 40단어를 넘으면 문항이 길어 학생이 읽다 지친다 */
+.quiz-item.over {
+  border-color: rgba(244, 176, 0, 0.45);
+  box-shadow: inset 3px 0 0 var(--accent-yellow);
+}
+
+.qi-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--s-xs);
+  font-size: 12px;
+}
+
+.qi-no {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.qi-form {
+  padding: 1px 7px;
+  border-radius: var(--r-pill);
+  background: var(--surface-strong);
+  color: var(--body);
+  font-weight: 600;
+}
+
+.qi-answer {
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.qi-src {
+  color: var(--muted);
+}
+
+.qi-words {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  color: var(--muted);
+}
+
+.qi-words.over {
+  color: var(--semantic-down);
+  font-weight: 600;
+}
+
+.qi-text {
+  margin: 8px 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
+.qi-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.qi-gap {
+  flex: 1;
 }
 
 /**
