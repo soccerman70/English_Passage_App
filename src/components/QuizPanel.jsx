@@ -5,6 +5,7 @@ import { useStore } from '../store.js'
 import { allocate, verbForm, FORM_LABEL, PARTS } from '../lib/quizAllocate.js'
 import { buildPartI, buildPartIV, renderPartIVItem } from '../lib/quizBuild.js'
 import { generateQuizParts } from '../lib/quizClient.js'
+import { downloadTest, downloadAnswers } from '../lib/exportDocx.js'
 
 export default function QuizPanel() {
   const { rows, passages, model, confirmedAt, docTitle, setStep } = useStore()
@@ -37,6 +38,30 @@ export default function QuizPanel() {
       setGenError(err.message)
     } finally {
       setGenBusy(false)
+    }
+  }
+
+  // 화면에서 조절한 앞뒤 문장이 그대로 문서에 실려야 한다
+  const docData = () => ({
+    title: docTitle,
+    partI,
+    partIV,
+    partIVTexts: partIV.items.map(
+      (it) => renderPartIVItem({ ...it, ...(context[it.rowId] || {}) }, passages).text
+    ),
+    gen,
+  })
+
+  const [saving, setSaving] = useState('')
+  const save = async (which) => {
+    setSaving(which)
+    setGenError('')
+    try {
+      await (which === 'test' ? downloadTest(docData()) : downloadAnswers(docData()))
+    } catch (err) {
+      setGenError(`문서 저장 실패: ${err.message}`)
+    } finally {
+      setSaving('')
     }
   }
 
@@ -200,6 +225,29 @@ export default function QuizPanel() {
                 ))}
               </>
             )}
+          </div>
+        </div>
+
+        {/* 5. 내보내기 */}
+        <div className="panel">
+          <div className="panel-title">
+            내보내기
+            <span className="count-pill">docx</span>
+          </div>
+          <div className="quiz-body">
+            <p className="hint" style={{ margin: 0 }}>
+              A4 · 여백 1080 dxa · 제목 Noto Serif KR · 지시문 Noto Sans KR · 영문 본문 Lora. 1쪽에 PART I~IV,
+              2쪽에 PART V~VI 가 들어갑니다. 화면에서 조절한 앞뒤 문장이 그대로 실립니다.
+            </p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button className="btn primary" onClick={() => save('test')} disabled={!gen || Boolean(saving)}>
+                {saving === 'test' ? <span className="spinner" /> : '⬇'} 시험지
+              </button>
+              <button className="btn" onClick={() => save('answers')} disabled={!gen || Boolean(saving)}>
+                {saving === 'answers' ? <span className="spinner dark" /> : '⬇'} 정답·해설지
+              </button>
+              {!gen && <span className="hint">문항을 먼저 만들어주세요.</span>}
+            </div>
           </div>
         </div>
 
