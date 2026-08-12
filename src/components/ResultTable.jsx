@@ -3,7 +3,8 @@ import { useStore } from '../store.js'
 import { downloadXlsx, formatDerivatives, formatWords } from '../lib/exportXlsx.js'
 
 export default function ResultTable() {
-  const { rows, antonymStats, lastUsage, model, fileInfo, setStep, updateRow, removeRow } = useStore()
+  const { rows, antonymStats, lastUsage, model, fileInfo, docTitle, confirmedAt, setStep, updateRow, removeRow } =
+    useStore()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -21,9 +22,7 @@ export default function ResultTable() {
     setSaving(true)
     setError('')
     try {
-      await downloadXlsx(rows, {
-        title: `정상JLS 심화단어장 — ${fileInfo?.name || ''}`.trim(),
-      })
+      await downloadXlsx(rows, { title: docTitle, sourceName: fileInfo?.name })
     } catch (err) {
       setError(`엑셀 저장 실패: ${err.message}`)
     } finally {
@@ -47,6 +46,7 @@ export default function ResultTable() {
         {issues.noMeaning > 0 && <span className="hint">뜻 없음 {issues.noMeaning}개</span>}
         {issues.noSynonym > 0 && <span className="hint">유의어 없음 {issues.noSynonym}개</span>}
         {issues.changed > 0 && <span className="hint">원형으로 바뀐 표제어 {issues.changed}개</span>}
+        {confirmedAt && <span className="confirm-tag">확정됨 {formatStamp(confirmedAt)}</span>}
         <span className="grow" />
         {lastUsage && (
           <span className="hint">
@@ -173,6 +173,12 @@ function AutoCell({ value, onChange, placeholder, className = '' }) {
       placeholder={placeholder}
     />
   )
+}
+
+function formatStamp(ms) {
+  const d = new Date(ms)
+  const p = (n) => String(n).padStart(2, '0')
+  return `${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
 }
 
 function parseWords(text) {

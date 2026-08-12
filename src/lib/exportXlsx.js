@@ -90,13 +90,32 @@ export function buildWorkbook(rows, { title } = {}) {
   return wb
 }
 
-export async function downloadXlsx(rows, { fileName, title } = {}) {
-  const wb = buildWorkbook(rows, { title })
+const DEFAULT_TITLE = '정상JLS 심화단어장'
+
+/** 윈도우에서 파일 이름에 쓸 수 없는 문자를 걷어낸다. */
+function safeFileName(text) {
+  return String(text || '')
+    .replace(/[\\/:*?"<>|]/g, '')
+    .trim()
+    .replace(/\s+/g, '_')
+}
+
+/**
+ * @param {string} [title] 사용자가 정한 단어장 제목. 있으면 엑셀 첫 줄과 파일 이름에 모두 쓴다.
+ * @param {string} [sourceName] 제목을 비웠을 때 첫 줄에 덧붙일 원본 파일 이름
+ */
+export async function downloadXlsx(rows, { fileName, title, sourceName } = {}) {
+  const custom = String(title || '').trim()
+  const wb = buildWorkbook(rows, {
+    title: custom || `${DEFAULT_TITLE}${sourceName ? ` — ${sourceName}` : ''}`,
+  })
   const buffer = await wb.xlsx.writeBuffer()
   const blob = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   })
-  triggerDownload(blob, fileName || `정상JLS_심화단어장_${stamp()}.xlsx`)
+  // 제목을 파일 이름에 쓰되, 비었거나 특수문자만 남으면 기본 이름으로 돌아간다
+  const base = safeFileName(custom) || safeFileName(DEFAULT_TITLE)
+  triggerDownload(blob, fileName || `${base}_${stamp()}.xlsx`)
 }
 
 function thinBorder() {

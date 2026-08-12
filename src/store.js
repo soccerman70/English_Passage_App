@@ -11,6 +11,12 @@ import { guessPos, guessLevel } from './lib/posLite.js'
 let seq = 0
 const nextId = () => `s${Date.now().toString(36)}${(seq += 1).toString(36)}`
 
+/**
+ * 단어장·시험지 제목 최대 길이. 입력창의 maxLength 와 같은 값을 쓴다.
+ * 시험지 헤더가 "2026 여름학기 · Week 3 · 어휘심화 SET B" 형태라 30자는 있어야 한다.
+ */
+export const DOC_TITLE_MAX = 30
+
 const initial = {
   step: 'input', // input | select | result
   fileInfo: null, // { name, kind, pageCount }
@@ -21,6 +27,7 @@ const initial = {
   targetCount: 100,
   mode: 'manual', // manual | ai
   model: 'claude-sonnet-5',
+  docTitle: '', // 엑셀 첫 줄과 파일 이름에 쓰는 단어장 제목
 
   focusedId: null,
   selections: [],
@@ -28,6 +35,8 @@ const initial = {
   rows: [],
   antonymStats: null,
   lastUsage: null,
+  // 단어장을 확정한 시각. 시험지 화면으로 넘어가는 순간 찍히고, 표를 한 칸이라도 고치면 지워진다.
+  confirmedAt: null,
 }
 
 export const useStore = create(
@@ -63,9 +72,15 @@ export const useStore = create(
         })),
 
       setTargetCount: (n) => set({ targetCount: Math.max(1, Math.min(500, Number(n) || 0)) }),
+      setDocTitle: (docTitle) => set({ docTitle: String(docTitle).slice(0, DOC_TITLE_MAX) }),
       setMode: (mode) => set({ mode }),
       setModel: (model) => set({ model }),
-      setStep: (step) => set({ step }),
+      /**
+       * 시험지 화면으로 넘어가는 것이 곧 단어장 확정이다.
+       * 별도 확정 버튼을 두지 않는 대신, 표를 고치면 확정이 풀려(updateRow·removeRow)
+       * 시험지와 단어장이 어긋난 채로 남지 않는다.
+       */
+      setStep: (step) => set(step === 'quiz' ? { step, confirmedAt: Date.now() } : { step }),
       setFocused: (id) => set({ focusedId: id }),
 
       /* ---------------- 표제어 선택 ---------------- */
@@ -116,12 +131,16 @@ export const useStore = create(
       /* ---------------- 결과 ---------------- */
 
       setRows: (rows, antonymStats, lastUsage) =>
-        set({ rows, antonymStats, lastUsage, step: 'result' }),
+        set({ rows, antonymStats, lastUsage, step: 'result', confirmedAt: null }),
 
       updateRow: (id, patch) =>
-        set((s) => ({ rows: s.rows.map((r) => (r.id === id ? { ...r, ...patch } : r)) })),
+        set((s) => ({
+          rows: s.rows.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+          confirmedAt: null,
+        })),
 
-      removeRow: (id) => set((s) => ({ rows: s.rows.filter((r) => r.id !== id) })),
+      removeRow: (id) =>
+        set((s) => ({ rows: s.rows.filter((r) => r.id !== id), confirmedAt: null })),
     }),
     {
       name: 'jls-vocab-store',
@@ -138,10 +157,12 @@ export const useStore = create(
         targetCount: s.targetCount,
         mode: s.mode,
         model: s.model,
+        docTitle: s.docTitle,
         focusedId: s.focusedId,
         selections: s.selections,
         rows: s.rows,
         antonymStats: s.antonymStats,
+        confirmedAt: s.confirmedAt,
       }),
     }
   )

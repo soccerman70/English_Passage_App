@@ -205,13 +205,11 @@ table.vocab td.num,
 }
 
 /**
- * 로고 폭과 오른쪽 단계 칩의 폭이 서로 달라 flex 흐름 안에서는 진짜 중앙이 나오지 않는다.
- * 흐름에서 빼내 헤더 기준 50% 지점에 고정해야 화면 폭의 정중앙에 놓인다.
+ * 왼쪽 로고와 오른쪽 단계 칩 사이에 남는 공간을 전부 차지하고 그 안에서 가운데 정렬한다.
+ * 화면 폭의 정중앙이 아니라 두 요소 사이의 중간이다 — 좌우 요소의 폭이 달라 서로 다른 자리다.
  */
 .brand-titles {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -221,30 +219,29 @@ table.vocab td.num,
   text-align: center;
 }
 
-.brand h1 {
+.brand-titles h1 {
+  display: flex;
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: -0.2px;
-  line-height: 1.2;
-  color: var(--on-dark);
-  white-space: nowrap;
+  line-height: 0;
 }
 
-/* 타이틀보다 확실히 한 단계 낮게 — 자간을 벌려 작은 글씨가 뭉치지 않게 한다 */
-.brand .brand-sub {
-  font-size: 11.5px;
-  font-weight: 400;
-  letter-spacing: 0.02em;
-  color: var(--on-dark-soft);
-  white-space: nowrap;
+/**
+ * 원본이 739×94(약 7.9:1)이라 높이를 1px 키울 때마다 폭이 8px씩 늘어난다.
+ * 32px 면 폭 252px — 헤더 높이의 절반이라 위아래 여백이 남고 단계 칩과도 부딪히지 않는다.
+ */
+.brand-titles h1 img {
+  display: block;
+  height: 32px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
 }
 
 .steps {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
   gap: var(--s-sm);
-  margin-left: auto;
 }
 
 /* 어두운 트랙 위에 칩이 떠 있는 구조 — 그림자가 아니라 층으로 깊이를 만든다 */
@@ -712,6 +709,25 @@ table.vocab td.num,
   outline: none;
   border: 2px solid var(--primary);
   padding: 0 15px;
+}
+
+/* 제목은 20자까지 들어가므로 숫자·선택 칸보다 넓게 둔다 */
+.field .title-input {
+  width: 100%;
+  max-width: 380px;
+}
+
+/* 라벨 옆 글자 수 — 라벨은 대문자 변환이 걸려 있어 숫자에는 풀어준다 */
+.field-count {
+  margin-left: 6px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--muted-soft);
+  text-transform: none;
+}
+
+.field .hint {
+  font-size: 12px;
 }
 
 /* 모드 토글 — 세그먼트 필 */
@@ -1876,6 +1892,24 @@ textarea.cell-edit.auto {
 
 .row-warn td:first-child {
   box-shadow: inset 3px 0 0 var(--accent-yellow);
+}
+
+/* 확정 표시 — 표를 한 칸이라도 고치면 사라진다. 초록은 문서 지침대로 상태 표시에만 쓴다. */
+.confirm-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: var(--r-pill);
+  background: rgba(5, 177, 105, 0.12);
+  color: #04794a;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.confirm-tag::before {
+  content: '✓';
 }
 
 /**

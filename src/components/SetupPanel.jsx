@@ -3,7 +3,7 @@ import { extractText, fileKind } from '../lib/textExtract.js'
 import { splitPassages, mergePassages, removePassage } from '../lib/passages.js'
 import { downloadText } from '../lib/exportXlsx.js'
 import { checkHealth } from '../lib/aiClient.js'
-import { useStore } from '../store.js'
+import { useStore, DOC_TITLE_MAX } from '../store.js'
 
 const SPLIT_LABEL = {
   marker: '지문 번호 표시를 기준으로 나눴습니다',
@@ -17,11 +17,13 @@ export default function SetupPanel() {
     targetCount,
     mode,
     model,
+    docTitle,
     splitMethod,
     fileInfo,
     loadPassages,
     setPassages,
     setTargetCount,
+    setDocTitle,
     setMode,
     setModel,
     setStep,
@@ -275,6 +277,27 @@ export default function SetupPanel() {
           <div className="panel">
             <div className="panel-title">단어장 설정</div>
             <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div className="field">
+                <label htmlFor="doc-title">
+                  단어장 · 시험지 제목
+                  <span className="field-count">
+                    {docTitle.length} / {DOC_TITLE_MAX}
+                  </span>
+                </label>
+                <input
+                  id="doc-title"
+                  type="text"
+                  className="title-input"
+                  maxLength={DOC_TITLE_MAX}
+                  value={docTitle}
+                  onChange={(e) => setDocTitle(e.target.value)}
+                  placeholder="예) 2026 여름학기 · Week 3 · 어휘심화 SET B"
+                />
+                <span className="hint">
+                  엑셀 첫 줄, 시험지 머리글, 내려받는 파일 이름에 들어갑니다. 비워두면 기본 제목을 씁니다.
+                </span>
+              </div>
+
               <div className="field-row">
                 <div className="field">
                   <label htmlFor="target">총 표제어 개수</label>
