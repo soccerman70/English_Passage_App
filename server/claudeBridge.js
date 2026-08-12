@@ -10,6 +10,12 @@
 
 import { spawn } from 'node:child_process'
 import { buildSelectPrompt, buildEnrichPrompt } from './prompts.js'
+import {
+  buildPartIIPrompt,
+  buildPartIIIPrompt,
+  buildPartVPrompt,
+  buildPartVIPrompt,
+} from './quizPrompts.js'
 
 const IS_WIN = process.platform === 'win32'
 const CLAUDE_BIN = process.env.CLAUDE_BIN || (IS_WIN ? 'claude.cmd' : 'claude')
@@ -191,6 +197,26 @@ const routes = {
       usage,
       durationMs,
     }
+  },
+
+  /**
+   * 시험지 한 PART 생성. II·III·V·VI 만 AI 가 필요하다.
+   * PART 마다 따로 부르는 것은 넷을 동시에 돌리기 위해서다.
+   */
+  async quiz(body) {
+    const { part, payload, model } = body
+    const build = {
+      II: buildPartIIPrompt,
+      III: buildPartIIIPrompt,
+      V: buildPartVPrompt,
+      VI: buildPartVIPrompt,
+    }[String(part)]
+
+    if (!build) throw new Error(`알 수 없는 PART: ${part}`)
+    if (!payload) throw new Error('PART 재료가 없습니다.')
+
+    const { text, usage, durationMs } = await runClaude(build(payload), { model })
+    return { part, result: parseJsonLoose(text), usage, durationMs }
   },
 
   /** 표제어 정규화 + 파생어/유의어/반의어 생성 (한 배치) */

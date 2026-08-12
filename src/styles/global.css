@@ -2059,6 +2059,44 @@ textarea.cell-edit.auto {
   color: var(--muted-soft);
 }
 
+/* ---- AI 가 만든 PART 미리보기 ---- */
+
+.qgen {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--hairline-soft);
+}
+
+.qgen-choices {
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.qgen-line {
+  margin: 0 0 4px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.qgen-line.dim,
+.qgen-line .dim {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.qgen-block {
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--hairline-soft);
+}
+
+.qgen-block:last-child {
+  border-bottom: none;
+}
+
 /* ---- 시험지 문항 미리보기 ---- */
 
 table.quiz-preview {

@@ -4,9 +4,10 @@ import { useMemo, useState } from 'react'
 import { useStore } from '../store.js'
 import { allocate, verbForm, FORM_LABEL, PARTS } from '../lib/quizAllocate.js'
 import { buildPartI, buildPartIV, renderPartIVItem } from '../lib/quizBuild.js'
+import { generateQuizParts } from '../lib/quizClient.js'
 
 export default function QuizPanel() {
-  const { rows, passages, confirmedAt, docTitle, setStep } = useStore()
+  const { rows, passages, model, confirmedAt, docTitle, setStep } = useStore()
   const result = useMemo(() => allocate(rows), [rows])
   const { parts, stats, shortages, thirdDetail, ok } = result
 
@@ -20,6 +21,24 @@ export default function QuizPanel() {
 
   const partI = useMemo(() => buildPartI(parts.I), [parts.I])
   const partIV = useMemo(() => buildPartIV(parts.IV), [parts.IV])
+
+  // AI 가 만드는 PART II·III·V·VI
+  const [gen, setGen] = useState(null)
+  const [genBusy, setGenBusy] = useState(false)
+  const [genProgress, setGenProgress] = useState(null)
+  const [genError, setGenError] = useState('')
+
+  const runGenerate = async () => {
+    setGenBusy(true)
+    setGenError('')
+    try {
+      setGen(await generateQuizParts({ parts, model, onProgress: setGenProgress }))
+    } catch (err) {
+      setGenError(err.message)
+    } finally {
+      setGenBusy(false)
+    }
+  }
 
   return (
     <div className="setup quiz-view">
@@ -142,6 +161,48 @@ export default function QuizPanel() {
           </div>
         )}
 
+        {/* 4. AI 가 만드는 PART */}
+        <div className="panel">
+          <div className="panel-title">
+            PART II · III · V · VI
+            <span className="count-pill">AI 생성</span>
+          </div>
+          <div className="quiz-body">
+            <p className="hint" style={{ margin: 0 }}>
+              영영풀이 · 어휘 관계 · 유의어 변별 · 서사 빈칸을 만듭니다. 네 PART 는 서로 의존이 없어 동시에
+              처리합니다. 받은 결과는 규칙을 지켰는지 코드로 다시 검사합니다.
+            </p>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button className="btn primary" onClick={runGenerate} disabled={genBusy || !ok}>
+                {genBusy ? <span className="spinner" /> : null}
+                {genBusy ? '만드는 중…' : gen ? '다시 만들기' : '문항 만들기'}
+              </button>
+              {genBusy && genProgress && (
+                <span className="hint">
+                  {genProgress.done} / {genProgress.total} PART 완료
+                </span>
+              )}
+              {!ok && <span className="hint">배정이 모자라 아직 만들 수 없습니다.</span>}
+            </div>
+
+            {genError && <div className="error-box">{genError}</div>}
+
+            {gen && (
+              <>
+                {gen.crossIssues.length > 0 && (
+                  <div className="notice-box">
+                    <strong>PART 간 중복 {gen.crossIssues.length}건</strong> — {gen.crossIssues.join(' · ')}
+                  </div>
+                )}
+                {['II', 'III', 'V', 'VI'].map((key) => (
+                  <GeneratedPart key={key} partKey={key} data={gen.byPart[key]} choices={gen.choices[key]} />
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn" onClick={() => setStep('result')}>
             ← 단어장으로 돌아가기
@@ -195,6 +256,113 @@ function PartRow({ spec, items, detail, showForm }) {
           ))
         )}
       </div>
+    </div>
+  )
+}
+
+const PART_TITLE = {
+  II: '영영풀이 매칭',
+  III: '어휘 관계 분석',
+  V: '복수 정답 유의어 변별',
+  VI: '지문형 빈칸 서사',
+}
+
+/** AI 가 만든 PART 하나. 규칙을 어긴 곳은 노란 선으로 알린다. */
+function GeneratedPart({ partKey, data, choices }) {
+  if (!data) return null
+  const bad = data.issues?.length > 0 || data.error
+
+  return (
+    <div className={`quiz-part${bad ? ' short' : ''}`}>
+      <div className="qp-head">
+        <span className="qp-no">PART {partKey}</span>
+        <span className="qp-label">{PART_TITLE[partKey]}</span>
+        {data.durationMs != null && <span className="qi-words">{Math.round(data.durationMs / 1000)}초</span>}
+      </div>
+
+      {data.error && <div className="qp-detail" style={{ color: 'var(--semantic-down)' }}>{data.error}</div>}
+
+      {data.issues?.length > 0 && (
+        <div className="qp-detail">
+          <strong>검사 {data.issues.length}건</strong> — {data.issues.join(' · ')}
+        </div>
+      )}
+
+      {!data.error && <PartBody partKey={partKey} result={data.result} choices={choices} />}
+    </div>
+  )
+}
+
+function PartBody({ partKey, result, choices }) {
+  if (partKey === 'II') {
+    return (
+      <div className="qgen">
+        <div className="qgen-choices">
+          보기 · {(result?.definitions || []).map((d) => d.headword).join(' / ')}
+          {result?.distractor?.word && ` / ${result.distractor.word}`}
+        </div>
+        {(result?.definitions || []).map((d) => (
+          <p key={d.id} className="qgen-line">
+            <b>{d.headword}</b> — {d.definition}
+          </p>
+        ))}
+        {result?.distractor && (
+          <p className="qgen-line dim">
+            distractor <b>{result.distractor.word}</b> — {result.distractor.reason}
+          </p>
+        )}
+      </div>
+    )
+  }
+
+  if (partKey === 'III') {
+    return (
+      <div className="qgen">
+        {(result?.items || []).map((it, i) => (
+          <p key={it.id || i} className="qgen-line">
+            {it.left} : {it.right} = {it.headword} : <b>{it.hint ? `${it.hint}___` : '___'}</b>
+            <span className="dim">
+              {' '}
+              → {it.answer} · {it.relation}
+              {it.note ? ` · ${it.note}` : ''}
+            </span>
+          </p>
+        ))}
+      </div>
+    )
+  }
+
+  if (partKey === 'V') {
+    return (
+      <div className="qgen">
+        {(result?.items || []).map((it, i) => (
+          <div key={it.id || i} className="qgen-block">
+            <p className="qgen-line">{it.sentence}</p>
+            <p className="qgen-line dim">
+              {(it.choices || []).map((c, k) => {
+                const isAnswer = (it.answers || []).includes(k + 1)
+                return (
+                  <span key={k} style={isAnswer ? { color: 'var(--primary)', fontWeight: 600 } : undefined}>
+                    {`①②③④⑤`[k]} {c}
+                    {'   '}
+                  </span>
+                )
+              })}
+            </p>
+            <p className="qgen-line dim">단서 {(it.clues || []).join(' · ')}</p>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="qgen">
+      <div className="qgen-choices">보기 · {(choices || []).join(' / ')}</div>
+      <p className="qgen-line">{result?.story}</p>
+      <p className="qgen-line dim">
+        {(result?.blanks || []).map((b) => `${b.no} ${b.answer}`).join(' · ')}
+      </p>
     </div>
   )
 }

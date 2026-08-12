@@ -5,7 +5,7 @@
  * (Windows에서 인자 따옴표 문제를 피하기 위해 --system-prompt 대신 본문 앞머리에 규칙을 둔다.)
  */
 
-const JSON_ONLY = `너는 JSON만 출력하는 API다.
+export const JSON_ONLY = `너는 JSON만 출력하는 API다.
 설명, 인사말, 마크다운 코드펜스(\`\`\`) 없이 순수 JSON 하나만 출력한다.
 출력의 첫 글자는 { 이고 마지막 글자는 } 여야 한다.`
 
