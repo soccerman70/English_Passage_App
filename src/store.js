@@ -49,7 +49,9 @@ export const useStore = create(
           rows: [],
           antonymStats: null,
           focusedId: passages[0]?.id ?? null,
-          step: passages.length ? 'select' : 'input',
+          // 지문을 만들었다고 바로 넘기지 않는다. 같은 화면에서 미리보기로 분할을 확인하고
+          // 개수·선택 방식·모델을 정한 뒤 "표제어 선택 시작" 버튼으로 넘어가는 것이 원래 흐름이다.
+          step: 'input',
         }),
 
       setPassages: (passages) =>
