@@ -129,6 +129,30 @@ function toLower(text) {
   return String(text).replace(/[A-Za-z]+/g, (w) => (w === 'A' || w === 'B' ? w : w.toLowerCase()))
 }
 
+/**
+ * 관용구 안의 인칭 표현을 사전 표기로 되돌린다.
+ *
+ * 사전은 "at one's disposal"로 싣지, 지문에 나온 "at their disposal"을 그대로 싣지 않는다.
+ * 프롬프트에도 같은 규칙을 넣었지만 AI가 매번 지키지는 않으므로 여기서 확실히 맞춘다.
+ *
+ * its·itself 는 건드리지 않는다. 사물을 가리키며 그 형태로 굳어진 관용구가 있어
+ * (take its toll, run its course, in itself) 일괄로 바꾸면 오히려 틀린다.
+ */
+const REFLEXIVE = /\b(?:myself|yourselves|yourself|himself|herself|ourselves|themselves)\b/gi
+const POSSESSIVE = /\b(?:my|your|his|her|our|their)\b/gi
+
+export function normalizePronouns(phrase) {
+  const text = String(phrase)
+  // 한 단어짜리는 대명사 자체가 표제어일 수 있으므로 손대지 않는다
+  if (!/\s/.test(text.trim())) return text
+  return text.replace(REFLEXIVE, 'oneself').replace(POSSESSIVE, (m, offset, whole) => {
+    // "her"만 소유격·목적격이 겹친다. 뒤에 이어지는 말이 없으면 목적격이다.
+    // (catch her eye → catch one's eye / surprised her → 그대로)
+    if (m.toLowerCase() === 'her' && !/\S/.test(whole.slice(offset + m.length))) return m
+    return "one's"
+  })
+}
+
 /** 품사는 한 글자로 표기한다. AI가 두 글자로 보내와도 여기서 줄인다. */
 const POS_SHORT = {
   명사: '명', 동사: '동', 형용사: '형', 부사: '부',
@@ -150,20 +174,27 @@ function normalizeBatch(results, sent) {
     // 고유명사는 AI가 보낸 대문자 표기를 그대로 살린다
     const properNoun = Boolean(r.properNoun)
     const cased = (text) => (properNoun ? String(text) : toLower(text))
+    // 유의어·반의어도 표제어와 같은 표기를 따라야 하므로 함께 일반화한다
+    const dictForm = (text) => normalizePronouns(cased(text))
+
+    const raw = (r.headword || item.surface).trim()
+    const headword = dictForm(raw)
+    const note = (r.normalizationNote || '').trim()
 
     return {
       id: item.id,
       passageNo: item.passageNo,
       surface: item.surface,
       sentence: item.sentence,
-      headword: cased((r.headword || item.surface).trim()),
-      normalizationNote: (r.normalizationNote || '').trim(),
+      headword,
+      // AI가 인칭을 그대로 뒀다면 여기서 바꾼 사실을 알려, 표에서 확인할 수 있게 한다
+      normalizationNote: note || (headword !== cased(raw) ? '인칭 → 사전형' : ''),
       properNoun,
       pos: shortPos(r.pos),
       meaning: (r.meaning || '').trim(),
       derivatives: cleanEntries(r.derivatives, 2, cased),
-      synonyms: cleanEntries(r.synonyms, 2, cased),
-      antonyms: cleanEntries(r.antonyms, 2, cased).map((a) => ({ ...a, confidence: Number(a.confidence) || 0 })),
+      synonyms: cleanEntries(r.synonyms, 2, dictForm),
+      antonyms: cleanEntries(r.antonyms, 2, dictForm).map((a) => ({ ...a, confidence: Number(a.confidence) || 0 })),
       missing: !byId.has(String(item.id)),
     }
   })

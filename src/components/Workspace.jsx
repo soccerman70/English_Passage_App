@@ -5,7 +5,7 @@ import MetaPanel from './MetaPanel.jsx'
 import GenerateModal from './GenerateModal.jsx'
 import { useStore, sortSelections } from '../store.js'
 import { tokenize, locateSurface } from '../lib/tokenize.js'
-import { sentenceAt } from '../lib/passages.js'
+import { sentenceAt, filesLabel } from '../lib/passages.js'
 import { guessPos, guessLevel } from '../lib/posLite.js'
 import { findDuplicates, inflectionKey } from '../lib/duplicates.js'
 import { autoSelect, enrichAll } from '../lib/aiClient.js'
@@ -21,7 +21,7 @@ export default function Workspace() {
     focusedId,
     model,
     mode,
-    fileInfo,
+    sourceFiles,
     setFocused,
     setTargetCount,
     toggleRange,
@@ -145,6 +145,7 @@ export default function Workspace() {
             id: `ai${passage.id}_${hit.start}`,
             passageId: passage.id,
             passageNo: passage.no,
+            passageLabel: passage.label,
             from: hit.from,
             to: hit.to,
             start: hit.start,
@@ -205,14 +206,20 @@ export default function Workspace() {
         model,
         onProgress: setGenProgress,
       })
-      setRows(rows, antonymStats, usage)
+      // AI는 숫자 번호(passageNo)만 주고받는다. 표와 시험지에 찍을 표기는 여기서 되붙인다.
+      const labelByNo = new Map(passages.map((p) => [p.no, p.label]))
+      setRows(
+        rows.map((r) => ({ ...r, passageLabel: labelByNo.get(r.passageNo) ?? String(r.passageNo) })),
+        antonymStats,
+        usage
+      )
       setModalOpen(false)
     } catch (err) {
       setGenError(err.message)
     } finally {
       setGenBusy(false)
     }
-  }, [model, selections, setRows])
+  }, [model, passages, selections, setRows])
 
   /* ---------------- 렌더 ---------------- */
 
@@ -225,7 +232,7 @@ export default function Workspace() {
           </button>
 
           <div className="wb-info">
-            <span className="wb-file">{fileInfo?.name || '지문'}</span>
+            <span className="wb-file">{filesLabel(sourceFiles) || '지문'}</span>
             <span className="wb-meta">
               지문 {passages.length}개 · 표제어 {selections.length}개 선택
             </span>

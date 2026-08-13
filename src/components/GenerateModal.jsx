@@ -139,7 +139,7 @@ function DupRow({ group, onRemove, strong }) {
           <span className="dup-word" title={sel.sentence}>
             {sel.surface}
           </span>
-          <span className="dup-passage">지문 {sel.passageNo}</span>
+          <span className="dup-passage">지문 {sel.passageLabel ?? sel.passageNo}</span>
           <button className="dup-rm" title="이 표제어를 뺍니다" onClick={() => onRemove?.(sel.id)}>
             ×
           </button>

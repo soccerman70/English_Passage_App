@@ -313,7 +313,7 @@ function answerPartOne(partI) {
         cell(para(t(q.synonyms || '—', { size: PT(9) }))),
         cell(
           new Paragraph({
-            children: [ui(`지문 ${q.passageNo}`, { size: PT(9) })],
+            children: [ui(String(q.passageLabel ?? q.passageNo), { size: PT(9) })],
             alignment: AlignmentType.CENTER,
           })
         ),
@@ -377,7 +377,7 @@ export function buildAnswerDoc(data) {
     children.push(
       ...card(it.no, `${it.answer} (${it.base})`, [
         ['문항', partIVTexts[i]],
-        ['출처', `지문 ${it.passageNo}`],
+        ['출처', String(it.passageLabel ?? it.passageNo)],
       ])
     )
   })

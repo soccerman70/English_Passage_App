@@ -114,6 +114,15 @@ export function buildEnrichPrompt({ items, antonymTargetRatio = 0.4 }) {
   - 단, 항상 복수로만 쓰이는 명사는 그대로 둔다. (goods, means, species, statistics, savings, belongings)
 - 어구는 어구 전체를 표제어로 두되, 위 규칙을 어구의 핵심어에 적용한다.
   (예: "was drawing on" → "draw on")
+- **어구 안의 인칭 표현은 사전 표기로 일반화한다.** 지문의 인칭을 그대로 남기지 마라.
+  - 소유격(my, your, his, her, our, their) → **one's**
+    (at their disposal → **at one's disposal**, make up your mind → **make up one's mind**,
+     caught his eye → **catch one's eye**, on our behalf → **on one's behalf**)
+  - 재귀대명사(myself, yourself, himself, herself, ourselves, themselves) → **oneself**
+    (pride themselves on → **pride oneself on**, avail themselves of → **avail oneself of**)
+  - 목적격 자리에 사람이 오는 틀이면 A로 둔다. (take her into account → take A into account)
+  - **예외**: its, itself 처럼 사물을 가리키며 그 형태로 굳어진 것은 그대로 둔다.
+    (take its toll, run its course, in itself, an end in itself)
 - 판단은 **출처 문장에서의 실제 쓰임**을 근거로 하라. 사전형만 보고 판단하지 마라.
 
 ### 1-2) 구문 틀(상관어구)의 자리 채우기 → A·B로 일반화

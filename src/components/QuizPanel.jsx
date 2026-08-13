@@ -424,7 +424,7 @@ function PartFourItem({ item, passages, onAdjust }) {
         <span className="qi-no">{item.no}</span>
         <span className="qi-form">{FORM_LABEL[item.form]}</span>
         <span className="qi-answer">{item.answer}</span>
-        <span className="qi-src">지문 {item.passageNo}</span>
+        <span className="qi-src">{item.passageLabel ?? item.passageNo}</span>
         <span className={`qi-words${r.overLimit ? ' over' : ''}`}>{r.words} / 40 단어</span>
       </div>
 

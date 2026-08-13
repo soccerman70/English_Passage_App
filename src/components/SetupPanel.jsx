@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { extractText, fileKind } from '../lib/textExtract.js'
-import { splitPassages, mergePassages, removePassage } from '../lib/passages.js'
+import { splitMultiple, mergePassages, removePassage } from '../lib/passages.js'
 import { downloadText } from '../lib/exportXlsx.js'
 import { checkHealth } from '../lib/aiClient.js'
 import { useStore, DOC_TITLE_MAX } from '../store.js'
@@ -11,6 +11,26 @@ const SPLIT_LABEL = {
   single: '나눌 기준을 찾지 못해 하나의 지문으로 두었습니다',
 }
 
+/** 어떤 번호 표기를 기준으로 잡았는지 알려주면, 잘못 잡았을 때 바로 눈치챌 수 있다. */
+const STYLE_SAMPLE = {
+  bracket: '[1]',
+  'ko-no': '1번',
+  dot: '1.',
+  paren: '1)',
+}
+
+/** 파일마다 한 번만 붙는 열쇠. 지문 id 가 여기서 나오므로 파일이 살아 있는 동안 변하지 않는다. */
+let sourceSeq = 0
+const nextSourceKey = () => `f${Date.now().toString(36)}${(sourceSeq += 1).toString(36)}`
+
+function styleLabel(style) {
+  if (!style) return ''
+  const [kind, detail] = style.split(':')
+  if (kind === 'word') return ` (${detail} 1 형식)`
+  if (kind === 'ko-ordinal') return ` (제1${detail} 형식)`
+  return STYLE_SAMPLE[kind] ? ` (${STYLE_SAMPLE[kind]} 형식)` : ''
+}
+
 export default function SetupPanel() {
   const {
     passages,
@@ -18,8 +38,7 @@ export default function SetupPanel() {
     mode,
     model,
     docTitle,
-    splitMethod,
-    fileInfo,
+    sourceFiles,
     loadPassages,
     setPassages,
     setTargetCount,
@@ -32,7 +51,9 @@ export default function SetupPanel() {
   const [busy, setBusy] = useState(null)
   const [error, setError] = useState('')
   const [dragOver, setDragOver] = useState(false)
-  const [pdfDraft, setPdfDraft] = useState(null) // { text, fileName, pageCount }
+  // 읽어들인 파일들. PDF는 변환 결과를 사람이 손본 뒤에 넘기므로 여기서 한 번 멈춘다.
+  // [{ name, kind, text, pageCount, needsReview }]
+  const [drafts, setDrafts] = useState(null)
   const [textDraft, setTextDraft] = useState(null) // 붙여넣기 입력창 내용. null이면 닫힌 상태
   const [health, setHealth] = useState(null)
   const inputRef = useRef(null)
@@ -41,51 +62,88 @@ export default function SetupPanel() {
     checkHealth().then(setHealth)
   }, [])
 
-  const ingestText = useCallback(
-    (text, info) => {
-      const { passages: found, method } = splitPassages(text)
+  /**
+   * 파일 목록 전체를 다시 나눠 담는다. 꼬리표와 번호가 파일 구성에 따라 달라지므로
+   * 하나를 더하거나 뺄 때도 부분 갱신이 아니라 전체를 다시 계산한다.
+   * @param {Array<{key?: string, name: string, text: string}>} sources
+   */
+  const ingest = useCallback(
+    (sources) => {
+      const { passages: found, files } = splitMultiple(sources)
       if (!found.length) {
         setError('영어 지문을 찾지 못했습니다. 파일 내용을 확인해주세요.')
         return
       }
-      loadPassages({ passages: found, rawText: text, fileInfo: info, splitMethod: method })
-      setPdfDraft(null)
+      loadPassages({ passages: found, sourceFiles: files })
+      setDrafts(null)
       setTextDraft(null)
       setError('')
     },
     [loadPassages]
   )
 
-  const handleFile = useCallback(
-    async (file) => {
-      if (!file) return
+  /** 이미 올린 파일 뒤에 새 파일을 더한다. 갈아끼우지 않는다. */
+  const handleFiles = useCallback(
+    async (fileList) => {
+      const picked = [...(fileList || [])]
+      if (!picked.length) return
       setError('')
-      setBusy({ label: `${file.name} 읽는 중…` })
+
+      const already = new Set(sourceFiles.map((f) => f.name))
+      const fresh = picked.filter((f) => !already.has(f.name))
+      const skipped = picked.length - fresh.length
+      if (!fresh.length) {
+        setError(`${picked.map((f) => f.name).join(', ')} 은(는) 이미 올린 파일입니다.`)
+        return
+      }
+
       try {
-        const kind = fileKind(file)
-        const result = await extractText(file, ({ page, total }) =>
-          setBusy({ label: `PDF 텍스트 변환 중… ${page}/${total} 쪽` })
-        )
-        if (kind === 'pdf') {
-          // PDF는 바로 지문으로 넘기지 않고 변환 결과를 먼저 확인·수정하게 한다
-          setPdfDraft({ text: result.text, fileName: file.name, pageCount: result.pageCount })
-        } else {
-          ingestText(result.text, { name: file.name, kind })
+        const added = []
+        for (const [i, file] of fresh.entries()) {
+          const of = fresh.length > 1 ? ` (${i + 1}/${fresh.length})` : ''
+          setBusy({ label: `${file.name} 읽는 중…${of}` })
+          const kind = fileKind(file)
+          const result = await extractText(file, ({ page, total }) =>
+            setBusy({ label: `${file.name} PDF 텍스트 변환 중… ${page}/${total} 쪽${of}` })
+          )
+          added.push({
+            key: nextSourceKey(),
+            name: file.name,
+            kind,
+            text: result.text,
+            pageCount: result.pageCount,
+            // PDF는 줄바꿈이 어긋나기 쉬워 눈으로 확인시킨 뒤 넘긴다
+            needsReview: kind === 'pdf',
+          })
         }
+        if (skipped) setError(`이미 올린 파일 ${skipped}개는 건너뛰었습니다.`)
+        // 새로 넣은 PDF만 검토 대상이다. 이미 확정된 파일은 손대지 않는다.
+        if (added.some((s) => s.needsReview)) setDrafts(added)
+        else ingest([...sourceFiles, ...added])
       } catch (err) {
         setError(err.message)
       } finally {
         setBusy(null)
       }
     },
-    [ingestText]
+    [ingest, sourceFiles]
   )
+
+  const removeSource = (key) => {
+    const rest = sourceFiles.filter((f) => f.key !== key)
+    // 마지막 파일을 빼면 지문만 비운다. 제목·개수 같은 설정까지 날릴 이유는 없다.
+    if (rest.length) ingest(rest)
+    else loadPassages({ passages: [], sourceFiles: [] })
+    setError('')
+  }
 
   const onDrop = (e) => {
     e.preventDefault()
     setDragOver(false)
-    handleFile(e.dataTransfer.files?.[0])
+    handleFiles(e.dataTransfer.files)
   }
+
+  const patchDraft = (i, text) => setDrafts((list) => list.map((d, j) => (j === i ? { ...d, text } : d)))
 
   return (
     <div className="setup">
@@ -110,9 +168,10 @@ export default function SetupPanel() {
             ref={inputRef}
             type="file"
             accept=".docx,.pdf,.txt"
+            multiple
             hidden
             onChange={(e) => {
-              handleFile(e.target.files?.[0])
+              handleFiles(e.target.files)
               e.target.value = ''
             }}
           />
@@ -143,8 +202,16 @@ export default function SetupPanel() {
                 </svg>
               </div>
               <div className="dz-text">
-                <div className="dz-main">지문 파일을 여기에 끌어다 놓거나 클릭해서 고르세요</div>
-                <div className="dz-sub">.docx 권장 · .pdf 는 텍스트 변환 후 사용 · .txt 도 가능</div>
+                <div className="dz-main">
+                  {sourceFiles.length
+                    ? `파일을 더 끌어다 놓으면 뒤에 추가됩니다 (현재 ${sourceFiles.length}개)`
+                    : '지문 파일을 여기에 끌어다 놓거나 클릭해서 고르세요'}
+                </div>
+                <div className="dz-sub">
+                  {sourceFiles.length
+                    ? '이미 올린 파일은 그대로 두고 새 파일의 지문만 뒤에 붙입니다'
+                    : '여러 개를 한 번에 올릴 수 있습니다 · .docx 권장 · .pdf 는 텍스트 변환 후 사용 · .txt 도 가능'}
+                </div>
               </div>
               {/* 드롭존 전체가 파일 선택 버튼이므로 클릭이 위로 번지지 않게 막는다 */}
               <button
@@ -163,38 +230,44 @@ export default function SetupPanel() {
         {error && <div className="error-box">{error}</div>}
 
         {/* 2. PDF 변환 결과 확인 (특별 기능) */}
-        {pdfDraft && (
+        {drafts && (
           <div className="panel pdf-panel">
             <div className="panel-title">
               PDF 텍스트 변환 결과
-              <span className="count-pill">{pdfDraft.pageCount}쪽</span>
+              <span className="count-pill">{drafts.filter((d) => d.needsReview).length}개 파일</span>
             </div>
             <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
               <p className="hint" style={{ margin: 0 }}>
                 PDF는 줄바꿈 정보가 정확하지 않을 수 있습니다. 아래에서 직접 고친 뒤 지문으로 넘기세요. 지문 사이는
                 빈 줄로 띄우거나 <strong>1. 2. 3.</strong> 같은 번호를 붙이면 더 정확히 나뉩니다.
+                {drafts.length > 1 && ' 파일별로 따로 나누므로 번호가 겹쳐도 괜찮습니다.'}
               </p>
-              <textarea
-                value={pdfDraft.text}
-                onChange={(e) => setPdfDraft({ ...pdfDraft, text: e.target.value })}
-                spellCheck={false}
-              />
+              {drafts.map((d, i) =>
+                d.needsReview ? (
+                  <div key={d.name} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div className="draft-head">
+                      <span className="pno-badge">{d.name}</span>
+                      <span className="hint">{d.pageCount}쪽</span>
+                      <button
+                        className="btn ghost sm"
+                        onClick={() => downloadText(d.text, d.name.replace(/\.pdf$/i, '') + '.txt')}
+                      >
+                        TXT로 저장
+                      </button>
+                    </div>
+                    <textarea value={d.text} onChange={(e) => patchDraft(i, e.target.value)} spellCheck={false} />
+                  </div>
+                ) : (
+                  <p key={d.name} className="hint" style={{ margin: 0 }}>
+                    {d.name} — 변환 없이 그대로 씁니다.
+                  </p>
+                )
+              )}
               <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  className="btn primary"
-                  onClick={() =>
-                    ingestText(pdfDraft.text, { name: pdfDraft.fileName, kind: 'pdf', pageCount: pdfDraft.pageCount })
-                  }
-                >
+                <button className="btn primary" onClick={() => ingest([...sourceFiles, ...drafts])}>
                   이 텍스트로 지문 만들기
                 </button>
-                <button
-                  className="btn"
-                  onClick={() => downloadText(pdfDraft.text, pdfDraft.fileName.replace(/\.pdf$/i, '') + '.txt')}
-                >
-                  TXT로 저장
-                </button>
-                <button className="btn ghost" onClick={() => setPdfDraft(null)}>
+                <button className="btn ghost" onClick={() => setDrafts(null)}>
                   취소
                 </button>
               </div>
@@ -222,7 +295,12 @@ export default function SetupPanel() {
                 <button
                   className="btn primary"
                   disabled={!textDraft.trim()}
-                  onClick={() => ingestText(textDraft, { name: '붙여넣은 텍스트', kind: 'txt' })}
+                  onClick={() =>
+                    ingest([
+                      ...sourceFiles,
+                      { key: nextSourceKey(), name: pasteName(sourceFiles), kind: 'txt', text: textDraft },
+                    ])
+                  }
                 >
                   이 텍스트로 지문 만들기
                 </button>
@@ -242,20 +320,44 @@ export default function SetupPanel() {
               <span className="count-pill">{passages.length}개</span>
             </div>
             <div style={{ padding: '10px 14px 0' }}>
-              <p className="hint" style={{ margin: 0 }}>
-                {fileInfo?.name} · {SPLIT_LABEL[splitMethod] || ''} · 잘못 나뉜 지문은 아래에서 합치거나 지우세요.
+              {sourceFiles.length > 1 && (
+                <p className="hint" style={{ margin: '0 0 4px' }}>
+                  파일 {sourceFiles.length}개를 각각 나눴습니다. 파일마다 번호가 1부터 다시 시작하므로 지문 번호 앞에
+                  파일 꼬리표를 붙여 구별합니다.
+                </p>
+              )}
+              {sourceFiles.map((f) => (
+                <p className="hint source-line" key={f.key}>
+                  {sourceFiles.length > 1 && <strong>{f.tag}</strong>}
+                  <span>
+                    {f.name} · 지문 {f.count}개 · {SPLIT_LABEL[f.method] || ''}
+                    {styleLabel(f.markerStyle)}
+                  </span>
+                  <button
+                    className="btn ghost sm"
+                    title="이 파일의 지문을 모두 뺍니다"
+                    onClick={() => removeSource(f.key)}
+                  >
+                    파일 빼기
+                  </button>
+                </p>
+              ))}
+              <p className="hint" style={{ margin: '4px 0 0' }}>
+                잘못 나뉜 지문은 아래에서 합치거나 지우세요.
               </p>
             </div>
             <div className="passage-preview-list">
               {passages.map((p, i) => (
                 <div className="passage-preview" key={p.id}>
                   <header>
-                    <span className="pp-no pno-badge">지문 {p.no}</span>
+                    <span className="pp-no pno-badge">지문 {p.label}</span>
                     <span className="pp-meta">
+                      {sourceFiles.length > 1 ? `${p.source} · ` : ''}
                       {countWords(p.english)} 단어{p.korean ? ' · 해석 있음' : ' · 해석 없음'}
                     </span>
                     <span className="pp-actions">
-                      {i > 0 && (
+                      {/* 다른 파일의 지문과는 합치지 않는다 — 단원이 섞여버린다 */}
+                      {i > 0 && passages[i - 1].sourceTag === p.sourceTag && (
                         <button className="btn ghost sm" onClick={() => setPassages(mergePassages(passages, i))}>
                           ↑ 위와 합치기
                         </button>
@@ -368,6 +470,12 @@ function HealthLine({ health }) {
       동작하지 않습니다. 터미널에서 <strong>claude --version</strong> 이 실행되는지 확인해주세요.
     </div>
   )
+}
+
+/** 붙여넣기를 여러 번 해도 이름이 겹치지 않게 한다 (이름이 겹치면 추가가 막힌다). */
+function pasteName(sourceFiles) {
+  const n = sourceFiles.filter((f) => f.name.startsWith('붙여넣은 텍스트')).length
+  return n ? `붙여넣은 텍스트 ${n + 1}` : '붙여넣은 텍스트'
 }
 
 function countWords(text) {

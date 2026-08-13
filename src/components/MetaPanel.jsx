@@ -84,9 +84,9 @@ export default function MetaPanel({ selections, passages, onFocusPassage }) {
                 key={p.id}
                 className={`meta-passage-cell${p.count === 0 ? ' zero' : ''}`}
                 onClick={() => onFocusPassage(p.id)}
-                title={`지문 ${p.no}`}
+                title={`지문 ${p.label ?? p.no}${p.source ? ` · ${p.source}` : ''}`}
               >
-                <div className="pno">{p.no}</div>
+                <div className="pno">{p.label ?? p.no}</div>
                 <div className="pcount">{p.count}</div>
               </div>
             ))}

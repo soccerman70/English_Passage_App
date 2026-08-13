@@ -1,9 +1,10 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '../store.js'
 import { downloadXlsx, formatDerivatives, formatWords } from '../lib/exportXlsx.js'
+import { filesLabel } from '../lib/passages.js'
 
 export default function ResultTable() {
-  const { rows, antonymStats, lastUsage, model, fileInfo, docTitle, confirmedAt, setStep, updateRow, removeRow } =
+  const { rows, antonymStats, lastUsage, model, sourceFiles, docTitle, confirmedAt, setStep, updateRow, removeRow } =
     useStore()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -22,7 +23,7 @@ export default function ResultTable() {
     setSaving(true)
     setError('')
     try {
-      await downloadXlsx(rows, { title: docTitle, sourceName: fileInfo?.name })
+      await downloadXlsx(rows, { title: docTitle, sourceName: filesLabel(sourceFiles) })
     } catch (err) {
       setError(`엑셀 저장 실패: ${err.message}`)
     } finally {
@@ -72,11 +73,11 @@ export default function ResultTable() {
             <tr>
               <th style={{ width: 44 }}>번호</th>
               <th style={{ width: 156 }}>표제어</th>
-              <th style={{ width: 54 }}>품사</th>
-              <th style={{ width: 168 }}>뜻</th>
-              <th style={{ width: 200 }}>파생어</th>
-              <th style={{ width: 186 }}>유의어</th>
-              <th style={{ width: 172 }}>반의어</th>
+              <th style={{ width: 46 }}>품사</th>
+              <th style={{ width: 142 }}>뜻</th>
+              <th style={{ width: 170 }}>파생어</th>
+              <th style={{ width: 158 }}>유의어</th>
+              <th style={{ width: 146 }}>반의어</th>
               <th style={{ width: 62 }}>출처</th>
               <th>출처 문장</th>
               <th style={{ width: 40 }} />
@@ -136,7 +137,7 @@ export default function ResultTable() {
                     placeholder="—"
                   />
                 </td>
-                <td className="center">지문 {r.passageNo}</td>
+                <td className="center">{r.passageLabel ?? r.passageNo}</td>
                 <td className="sentence">{highlight(r.sentence, r.surface)}</td>
                 <td className="center">
                   <button className="btn ghost sm" title="이 줄 삭제" onClick={() => removeRow(r.id)}>

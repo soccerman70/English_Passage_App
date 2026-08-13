@@ -828,6 +828,37 @@ table.vocab td.num,
   padding: 15px;
 }
 
+/* 지문 확인 패널 머리의 파일별 요약 줄 */
+.source-line {
+  display: flex;
+  align-items: center;
+  gap: var(--s-xs);
+  margin: 0;
+}
+
+.source-line > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-line .btn {
+  margin-left: auto;
+  flex: none;
+}
+
+/* PDF를 여러 개 올렸을 때, 어느 파일의 변환 결과인지 알리는 줄 */
+.draft-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-xs);
+}
+
+.draft-head .btn {
+  margin-left: auto;
+}
+
 /* ================================================================
    2단계 — 표제어 선택 (작업 밀도 유지)
    ================================================================ */

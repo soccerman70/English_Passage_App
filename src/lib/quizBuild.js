@@ -54,6 +54,7 @@ export function buildPartI(rows, startNo = 1) {
       meaning: row.meaning,
       synonyms: (row.synonyms || []).map((s) => s.word).join(', '),
       passageNo: row.passageNo,
+      passageLabel: row.passageLabel,
     }
   })
 }
@@ -71,6 +72,7 @@ export function buildPartIV(rows, startNo = 21) {
     base: row.headword,
     form: verbForm(row.surface, row.headword),
     passageNo: row.passageNo,
+    passageLabel: row.passageLabel,
     // 화면에서 사람이 조절한다. 0 이면 출처 문장만 쓴다.
     before: 0,
     after: 0,

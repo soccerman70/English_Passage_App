@@ -5,8 +5,59 @@
 const HANGUL = /[ㄱ-ㆎ가-힣]/g
 const LATIN = /[A-Za-z]/g
 
-/** 지문 번호 표시 줄. "1.", "[3]", "지문 5", "Passage 2", "01)" 등을 인식한다. */
-const MARKER = /^\s*(?:\[\s*(\d{1,3})\s*\]|(?:지문|문항|Passage|PASSAGE|Text)\s*[.:]?\s*(\d{1,3})|(\d{1,3})\s*[.)\]]|(\d{1,3})\s*번)\s*(.*)$/
+/* ── 지문 번호 인식 ────────────────────────────────────────────────
+ * 번호 표기는 문서마다 제각각이라 "이 모양이면 번호"라고 한 줄씩
+ * 판정하면 본문 속 "3.14", 해석 안의 "1. 그는…", 객관식 보기까지
+ * 전부 걸려든다. 패턴을 늘릴수록 오히려 더 잘게 부서진다.
+ *
+ * 그래서 판정을 두 단계로 나눈다.
+ *   1) 알려진 표기를 모두 훑어 후보를 모으고, 표기 방식별로 묶는다.
+ *   2) 각 묶음에서 번호가 오름차순으로 이어지는 가장 긴 부분열만 남기고,
+ *      "문서 전체에 퍼져 있는가 / 번호가 끊기지 않는가 / 뒤에 영어가
+ *      따라오는가"로 점수를 매겨 표기 하나를 고른다.
+ * 오탐은 이 일관성 검사에서 걸러지므로, 표기를 더 추가해도 안전하다.
+ */
+
+/** 번호 앞에 붙는 말머리. 긴 것을 먼저 둬야 Exercise가 Ex로 잘리지 않는다. */
+const MARKER_WORDS =
+  'Exercise|Example|Ex|Passage|Practice|Problem|Question|Reading|Chapter|Lesson|Unit|Text|Test|Part|Set|No|Q|지문|문항|문제|본문|예제|유형'
+
+const MARKER_PATTERNS = [
+  {
+    // [1]  【01】  <2>  (3)
+    re: /^[[【〔<(]\s*(\d{1,3})\s*[\]】〕>)][.):]?\s*(.*)$/,
+    read: (m) => ({ no: Number(m[1]), rest: m[2], style: 'bracket' }),
+  },
+  {
+    // Exercise 01.   Passage 2)   지문 3   Q1
+    re: new RegExp(`^(${MARKER_WORDS})\\s*[.:#]?\\s*(\\d{1,3})\\s*[.):\\]]?\\s*(.*)$`, 'i'),
+    read: (m) => ({ no: Number(m[2]), rest: m[3], style: `word:${m[1].toLowerCase()}` }),
+  },
+  {
+    // 제3강   제 5 회
+    re: /^제\s*(\d{1,3})\s*([강회과장])\s*[.):]?\s*(.*)$/,
+    read: (m) => ({ no: Number(m[1]), rest: m[3], style: `ko-ordinal:${m[2]}` }),
+  },
+  {
+    // 01번
+    re: /^(\d{1,3})\s*번[.):]?\s*(.*)$/,
+    read: (m) => ({ no: Number(m[1]), rest: m[2], style: 'ko-no' }),
+  },
+  {
+    // 1.   01.
+    re: /^(\d{1,3})\s*\.\s*(.*)$/,
+    read: (m) => ({ no: Number(m[1]), rest: m[2], style: 'dot' }),
+  },
+  {
+    // 1)   01)
+    re: /^(\d{1,3})\s*\)\s*(.*)$/,
+    read: (m) => ({ no: Number(m[1]), rest: m[2], style: 'paren' }),
+  },
+]
+
+/** 오인 소지가 적은 표기일수록 높다. 맨 숫자(dot)가 가장 위험하다. */
+const STYLE_BONUS = { word: 30, 'ko-ordinal': 25, bracket: 20, 'ko-no': 15, paren: 5, dot: 0 }
+const styleBonus = (style) => STYLE_BONUS[style.split(':')[0]] ?? 0
 
 export function classifyLine(line) {
   const hangul = (line.match(HANGUL) || []).length
@@ -15,6 +66,45 @@ export function classifyLine(line) {
   if (hangul > 0 && hangul * 2 >= latin) return 'ko'
   if (latin > 0) return 'en'
   return 'other'
+}
+
+/**
+ * 문항에 박히는 동그라미 번호. ⓪①②③… ㉑… ㉱…
+ * 문장 삽입 문항은 "( ① )"처럼 괄호에 싸서 문장 사이에 끼워 넣고,
+ * 어법·어휘 문항은 "①have"처럼 단어에 바로 붙인다. 둘 다 지문의 일부가 아니라
+ * 문항 표시이므로 지문을 만들 때 걷어낸다.
+ */
+const CIRCLED = '\\u24EA\\u2460-\\u2473\\u3251-\\u325F\\u32B1-\\u32BF'
+const INSERT_MARK = new RegExp(`[(（[]?\\s*[${CIRCLED}]\\s*[)）\\]]?`, 'g')
+
+/**
+ * 어휘 각주 줄. "*autonomy: 자율성  **earmarking: 지정 예산" 처럼 별표로 시작한다.
+ * 지문 본문이 아니라 문항 딸림 정보인데, 한글만 걷어내면 "*autonomy: earmarking:"
+ * 같은 잔해가 본문에 섞여 문장 경계를 무너뜨린다.
+ */
+const FOOTNOTE_LINE = /^\s*[*※†‡]/
+
+/**
+ * 객관식 보기 줄. "① precise ... ideology" 처럼 동그라미로 시작하고 문장부호로 끝나지 않는다.
+ *
+ * 문장을 마치는 부호가 있으면 본문으로 남긴다. 문장 삽입 문항의 "( ① ) Recent …" 는
+ * 괄호로 시작하므로 애초에 여기 걸리지 않고, "① He was late." 같은 완결된 줄도 지키기 위해서다.
+ */
+const CHOICE_LINE = new RegExp(`^\\s*[${CIRCLED}]`)
+const ENDS_SENTENCE = /[.!?]["'’”»)\]]*\s*$/
+
+/** 지문 본문이 아니라 문항 장치인 줄이면 참. */
+function isApparatus(line) {
+  return FOOTNOTE_LINE.test(line) || (CHOICE_LINE.test(line) && !ENDS_SENTENCE.test(line))
+}
+
+/** 동그라미 번호 표시를 지우고 그 자리에 생긴 빈칸을 정리한다. */
+export function stripInsertionMarks(text) {
+  return String(text)
+    .replace(INSERT_MARK, ' ')
+    .replace(/\s+([,.;:!?])/g, '$1')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
 }
 
 /** 한 줄에서 영어 부분만 남긴다 (영문 뒤에 괄호 해석이 붙은 경우 대비). */
@@ -26,32 +116,103 @@ export function stripKoreanInline(line) {
     .trim()
 }
 
+/** 1단계: 알려진 표기에 걸리는 줄을 모두 후보로 모은다. */
 function detectMarkers(lines) {
   const hits = []
-  lines.forEach((line, i) => {
-    const m = line.match(MARKER)
-    if (!m) return
-    const no = Number(m[1] || m[2] || m[3] || m[4])
-    const rest = (m[5] || '').trim()
-    // 번호 뒤 내용이 없거나 영어로 시작하면 지문 머리로 본다.
-    // "3.14" 같은 소수나 문장 중간 숫자는 걸러낸다.
-    if (!Number.isFinite(no) || no < 1 || no > 300) return
-    if (rest && classifyLine(rest) === 'other') return
-    hits.push({ line: i, no, rest })
+  lines.forEach((text, line) => {
+    for (const pattern of MARKER_PATTERNS) {
+      const m = text.match(pattern.re)
+      if (!m) continue
+      const { no, rest, style } = pattern.read(m)
+      if (!Number.isFinite(no) || no < 1 || no > 300) break
+      // "3.14" 같은 소수는 번호가 아니라 값이다
+      if (style === 'dot' && /^\d/.test(rest)) break
+      hits.push({ line, no, rest: rest.trim(), style })
+      break // 한 줄에는 한 가지 표기만 인정한다
+    }
   })
   return hits
+}
+
+/** 번호가 오름차순으로 이어지는 가장 긴 부분열. n이 작아 O(n²)로 충분하다. */
+function ascendingRun(items) {
+  if (items.length < 2) return items.slice()
+  const len = items.map(() => 1)
+  const from = items.map(() => -1)
+  let last = 0
+  for (let i = 1; i < items.length; i++) {
+    for (let j = 0; j < i; j++) {
+      if (items[j].no < items[i].no && len[j] + 1 > len[i]) {
+        len[i] = len[j] + 1
+        from[i] = j
+      }
+    }
+    if (len[i] > len[last]) last = i
+  }
+  const run = []
+  for (let i = last; i !== -1; i = from[i]) run.unshift(items[i])
+  return run
+}
+
+/**
+ * 지문 머리라면 번호 바로 뒤부터 영어 본문이다.
+ *
+ * 여기서 "바로 뒤"를 몇 줄까지로 보느냐가 중요하다. 몇 줄 앞까지 뒤지면
+ * 해석문 속 "1번 지문은 …" 같은 줄도 (다음 지문의 영어를 보고) 지문 머리로
+ * 통과해버린다. 그래서 번호 뒤에 남은 내용, 그게 비었으면 바로 다음
+ * 비지 않은 줄, 딱 거기까지만 본다.
+ */
+function startsPassage(lines, idx, rest) {
+  if (rest) return classifyLine(rest) === 'en'
+  for (let i = idx + 1; i < lines.length; i++) {
+    if (lines[i]) return classifyLine(lines[i]) === 'en'
+  }
+  return false
+}
+
+function scoreRun(run, dropped, lines) {
+  const n = run.length
+  if (n < 2) return -Infinity
+  const span = run[n - 1].line - run[0].line
+  const withEnglish = run.filter((mk) => startsPassage(lines, mk.line, mk.rest)).length
+
+  let score = n * 10 + styleBonus(run[0].style)
+  if (run[0].no === 1) score += 15 // 1번부터 시작
+  if (run[n - 1].no - run[0].no === n - 1) score += 20 // 번호가 끊기지 않음
+  score -= dropped * 8 // 같은 표기에서 걸러낸 오탐이 많을수록 못 믿는다
+  score += Math.round((span / Math.max(lines.length - 1, 1)) * 30) // 문서 전체에 퍼져 있어야 한다
+  score += Math.round((withEnglish / n) * 40)
+  if (span / (n - 1) < 2) score -= 40 // 간격이 두 줄도 안 되면 지문이 아니라 목록·보기다
+  return score
+}
+
+/** 2단계: 표기 방식별로 묶어 점수를 매기고 가장 그럴듯한 하나를 고른다. */
+function pickMarkers(lines) {
+  const byStyle = new Map()
+  for (const hit of detectMarkers(lines)) {
+    if (!byStyle.has(hit.style)) byStyle.set(hit.style, [])
+    byStyle.get(hit.style).push(hit)
+  }
+  let best = null
+  for (const [style, items] of byStyle) {
+    const run = ascendingRun(items)
+    const score = scoreRun(run, items.length - run.length, lines)
+    if (score >= 30 && (!best || score > best.score)) best = { style, run, score }
+  }
+  return best
 }
 
 function buildPassage(id, no, lines) {
   const en = []
   const ko = []
   for (const line of lines) {
+    if (isApparatus(line)) continue
     const kind = classifyLine(line)
     if (kind === 'en') {
-      const cleaned = stripKoreanInline(line)
+      const cleaned = stripInsertionMarks(stripKoreanInline(line))
       if (cleaned) en.push(cleaned)
     } else if (kind === 'ko') {
-      ko.push(line.trim())
+      ko.push(stripInsertionMarks(line))
     }
   }
   return {
@@ -63,26 +224,29 @@ function buildPassage(id, no, lines) {
 }
 
 /**
- * @returns {{ passages: Array, method: string, markerCount: number }}
+ * @returns {{ passages: Array, method: string, markerStyle: string|null, markerCount: number }}
  */
 export function splitPassages(rawText) {
   const lines = String(rawText).split('\n').map((l) => l.trim())
-  const markers = detectMarkers(lines)
+  const best = pickMarkers(lines)
 
-  // 1순위: 번호 표시가 2개 이상이면 그것으로 나눈다.
-  if (markers.length >= 2) {
+  // 1순위: 일관된 번호 표기를 찾았으면 그것으로 나눈다.
+  if (best) {
     const passages = []
-    markers.forEach((marker, idx) => {
-      const from = marker.line
-      const to = idx + 1 < markers.length ? markers[idx + 1].line : lines.length
-      const slice = lines.slice(from, to)
-      // 머리 줄에서 번호 부분을 떼어낸다
-      slice[0] = (slice[0].match(MARKER)?.[5] ?? slice[0]).trim()
+    best.run.forEach((marker, idx) => {
+      const to = idx + 1 < best.run.length ? best.run[idx + 1].line : lines.length
+      // 머리 줄은 번호를 떼어낸 나머지만 남긴다
+      const slice = [marker.rest, ...lines.slice(marker.line + 1, to)]
       const p = buildPassage(`p${idx + 1}`, marker.no, slice)
       if (p.english) passages.push(p)
     })
     if (passages.length >= 2) {
-      return { passages: renumber(passages), method: 'marker', markerCount: markers.length }
+      return {
+        passages: renumber(passages),
+        method: 'marker',
+        markerStyle: best.style,
+        markerCount: best.run.length,
+      }
     }
   }
 
@@ -120,7 +284,12 @@ export function splitPassages(rawText) {
   flush()
 
   if (passages.length) {
-    return { passages: renumber(passages), method: 'heuristic', markerCount: markers.length }
+    return {
+      passages: renumber(passages),
+      method: 'heuristic',
+      markerStyle: null,
+      markerCount: best?.run.length ?? 0,
+    }
   }
 
   // 3순위: 통짜 한 덩어리
@@ -128,12 +297,105 @@ export function splitPassages(rawText) {
   return {
     passages: only.english ? [only] : [],
     method: 'single',
-    markerCount: markers.length,
+    markerStyle: null,
+    markerCount: best?.run.length ?? 0,
   }
 }
 
+/**
+ * 통번호(no)와 표기(label)를 다시 매긴다.
+ *
+ * `no`는 파일이 몇 개든 전체에서 1부터 이어지는 번호다. 선택·행·AI 왕복이
+ * 모두 이 숫자를 열쇠로 쓰므로 절대 문자열로 바꾸지 않는다.
+ * 화면과 문서에 찍는 것은 `label`이고, 파일이 둘 이상일 때만
+ * 파일 꼬리표를 앞에 붙여 "Ch3-2"처럼 구별한다.
+ */
 function renumber(passages) {
-  return passages.map((p, i) => ({ ...p, id: `p${i + 1}`, no: i + 1 }))
+  const multiSource = new Set(passages.map((p) => p.sourceKey)).size > 1
+  const seen = new Map()
+  return passages.map((p, i) => {
+    const sourceNo = (seen.get(p.sourceKey) || 0) + 1
+    seen.set(p.sourceKey, sourceNo)
+    return {
+      ...p,
+      // id 는 파일에 붙어 있어야 한다. 위치로 매기면 앞 파일을 뺐을 때 뒤 지문의 id 가
+      // 밀려서, 이미 골라둔 표제어가 엉뚱한 지문에 달라붙는다.
+      id: p.sourceKey ? `${p.sourceKey}-${sourceNo}` : `p${i + 1}`,
+      no: i + 1,
+      sourceNo,
+      label: multiSource && p.sourceTag ? `${p.sourceTag}-${sourceNo}` : String(i + 1),
+    }
+  })
+}
+
+/* ── 파일 여러 개 ─────────────────────────────────────────────────
+ * Chapter가 다르면 번호가 저마다 1부터 다시 시작한다. 그래서 파일을
+ * 하나로 이어 붙여 나누면 "1번"이 여러 개 생겨 어느 파일 것인지 알 수 없다.
+ * 파일별로 따로 나눈 뒤, 파일 이름에서 뽑은 꼬리표를 번호 앞에 붙인다.
+ */
+
+/** 파일 이름 속 단원 표시. "Chapter 3", "Ch.3", "Unit 2", "3강", "5주차" 등. */
+const CHAPTER_TAG =
+  /(?:^|[^A-Za-z0-9])(?:(Chapters?|Chap|Ch|Units?|Lessons?|Weeks?|Days?|Parts?|Sets?)\s*[.\-_]?\s*(\d{1,3})|(\d{1,3})\s*(강|과|회|장|일차|주차|단원))/i
+
+/** Chapter/Chap/Ch 는 다 같은 뜻이라 Ch 로 줄인다. 나머지는 그대로 둔다. */
+function shortWord(word) {
+  const w = word.toLowerCase().replace(/s$/, '')
+  if (w === 'chapter' || w === 'chap' || w === 'ch') return 'Ch'
+  return w.charAt(0).toUpperCase() + w.slice(1)
+}
+
+/** 파일 이름에서 지문 번호 앞에 붙일 짧은 꼬리표를 뽑는다. */
+export function sourceTag(name) {
+  const base = String(name || '')
+    .replace(/\.[^.]+$/, '')
+    .trim()
+  if (!base) return ''
+  const m = base.match(CHAPTER_TAG)
+  if (m) return m[1] ? `${shortWord(m[1])}${Number(m[2])}` : `${Number(m[3])}${m[4]}`
+  // 단원 표시가 없으면 파일 이름을 그대로 쓰되, 표에 들어갈 만큼 짧게 줄인다.
+  return base.length <= 14 ? base : base.slice(0, 14)
+}
+
+/** 같은 꼬리표가 겹치면 구별이 안 되므로 뒤에 번호를 붙인다. */
+function uniqueTags(names) {
+  const used = new Map()
+  return names.map((name, i) => {
+    const base = sourceTag(name) || `파일${i + 1}`
+    const n = (used.get(base) || 0) + 1
+    used.set(base, n)
+    return n > 1 ? `${base}(${n})` : base
+  })
+}
+
+/**
+ * 여러 원본을 각각 나눈 뒤 하나의 목록으로 합친다. 원본이 하나뿐이면
+ * label 이 그냥 "1", "2"라서 기존 동작과 같다.
+ *
+ * `key` 는 파일을 처음 읽을 때 한 번 붙여두고 계속 유지하는 값이다.
+ * 지문 id 가 여기서 나오므로, 파일을 더하거나 빼도 남은 지문의 id 는 변하지 않는다.
+ *
+ * @param {Array<{key?: string, name: string, text: string}>} sources
+ * @returns {{ passages: Array, files: Array }}
+ */
+export function splitMultiple(sources) {
+  const list = (sources || []).filter((s) => String(s?.text || '').trim())
+  const tags = uniqueTags(list.map((s) => s.name))
+  const files = []
+  const all = []
+  list.forEach((src, i) => {
+    const key = src.key || `s${i}`
+    const { passages, method, markerStyle } = splitPassages(src.text)
+    files.push({ ...src, key, tag: tags[i], count: passages.length, method, markerStyle })
+    for (const p of passages) all.push({ ...p, source: src.name, sourceKey: key, sourceTag: tags[i] })
+  })
+  return { passages: renumber(all), files }
+}
+
+/** "Chapter1.docx 외 2개" — 파일이 여럿일 때 출처를 한 줄로 요약한다. */
+export function filesLabel(files) {
+  if (!files?.length) return ''
+  return files.length === 1 ? files[0].name : `${files[0].name} 외 ${files.length - 1}개`
 }
 
 /** 인접한 두 지문을 합친다. */
@@ -166,8 +428,13 @@ const SENT_END = '[.!?]["\'’”»)\\]]*'
 /**
  * 다음이 대문자(또는 여는 따옴표+대문자)로 시작할 때만 문장을 나눈다.
  * `"Stop!" he shouted.` 처럼 인용 뒤에 소문자가 이어지면 아직 한 문장이다.
+ *
+ * 동그라미 번호와 각주 별표(*)도 문장 첫머리로 인정한다. 지문을 만들 때 걷어내지만,
+ * 각주가 본문 줄 끝에 붙어 있으면 줄 단위로는 걸러낼 수 없다. 이것을 빠뜨리면
+ * "… in certain states. *autonomy: …" 에서 문장이 끊기지 않아 뒤따르는 요약문·보기까지
+ * 한 문장으로 뭉치고, 출처 문장 칸에 지문 전체가 실린다.
  */
-const NEXT_STARTS = '(?=["\'“‘(]?[A-Z0-9가-힣])'
+const NEXT_STARTS = `(?=["'“‘(（[]?\\s*[*※†‡A-Z0-9가-힣${CIRCLED}])`
 
 export function splitSentences(text) {
   const out = []

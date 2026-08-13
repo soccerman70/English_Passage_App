@@ -7,11 +7,11 @@ import ExcelJS from 'exceljs'
 export const COLUMNS = [
   { key: 'no', header: '번호', width: 6 },
   { key: 'headword', header: '표제어', width: 22 },
-  { key: 'pos', header: '품사', width: 6 },
-  { key: 'meaning', header: '뜻', width: 20 },
-  { key: 'derivatives', header: '파생어', width: 30 },
-  { key: 'synonyms', header: '유의어', width: 26 },
-  { key: 'antonyms', header: '반의어', width: 26 },
+  { key: 'pos', header: '품사', width: 5 },
+  { key: 'meaning', header: '뜻', width: 17 },
+  { key: 'derivatives', header: '파생어', width: 25 },
+  { key: 'synonyms', header: '유의어', width: 22 },
+  { key: 'antonyms', header: '반의어', width: 22 },
   { key: 'source', header: '출처', width: 8 },
   { key: 'sentence', header: '출처 문장', width: 64 },
 ]
@@ -39,7 +39,7 @@ export function toRowObjects(rows) {
     derivatives: formatDerivatives(r.derivatives),
     synonyms: formatWords(r.synonyms),
     antonyms: formatWords(r.antonyms),
-    source: `지문 ${r.passageNo}`,
+    source: String(r.passageLabel ?? r.passageNo),
     sentence: r.sentence || '',
   }))
 }
@@ -79,7 +79,10 @@ export function buildWorkbook(rows, { title } = {}) {
     const center = { vertical: 'top', horizontal: 'center' }
     row.getCell(columnIndex('no')).alignment = center
     row.getCell(columnIndex('pos')).alignment = center
-    row.getCell(columnIndex('source')).alignment = center
+    // 출처는 파일이 여럿이면 "11강-3"까지 길어진다. 좁은 칸에 담기도록 9pt로 줄인다.
+    const source = row.getCell(columnIndex('source'))
+    source.alignment = center
+    source.font = { size: 9 }
     row.getCell(columnIndex('headword')).font = { bold: true }
     row.eachCell((cell) => {
       cell.border = thinBorder()

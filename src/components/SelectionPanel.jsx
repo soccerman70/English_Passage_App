@@ -64,7 +64,7 @@ export default function SelectionPanel({
           groups.map(([passageNo, items]) => (
             <div key={passageNo}>
               <div className="sel-group-label">
-                <span className="pno-badge">지문 {passageNo}</span>
+                <span className="pno-badge">지문 {items[0].passageLabel ?? passageNo}</span>
               </div>
               {items.map((sel) => (
                 <div
