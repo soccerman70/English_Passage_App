@@ -13,6 +13,10 @@ import { autoSelect, enrichAll } from '../lib/aiClient.js'
 /** AI가 개수를 못 맞출 때 부족분을 다시 요청하는 최대 횟수 */
 const MAX_ROUNDS = 3
 
+const REGENERATE_WARNING =
+  '이전 생성된 자료가 존재합니다. 다시 생성하시겠습니까?\n\n' +
+  '지금 표에 있는 파생어·유의어·반의어와 직접 고친 내용은 모두 새 결과로 바뀝니다.'
+
 export default function Workspace() {
   const {
     passages,
@@ -22,6 +26,7 @@ export default function Workspace() {
     model,
     mode,
     sourceFiles,
+    rows,
     setFocused,
     setTargetCount,
     toggleRange,
@@ -295,6 +300,9 @@ export default function Workspace() {
           onRemove={removeSelection}
           onClear={clearSelections}
           onGenerate={() => {
+            // 이미 만든 표가 있으면 덮어쓰기 전에 한 번 묻는다. 생성은 시간과 비용이 드는 작업이고,
+            // 표에서 손으로 고친 내용까지 함께 날아간다.
+            if (rows.length && !confirm(REGENERATE_WARNING)) return
             setGenError('')
             setModalOpen(true)
           }}

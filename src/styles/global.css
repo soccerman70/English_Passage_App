@@ -50,6 +50,14 @@
   --on-primary: #ffffff;
   --on-dark: #ffffff;
   --on-dark-soft: #a8acb3;
+
+  /* 단계 칩 테두리 — 헤더가 거의 검정(--surface-dark)이라 테두리가 없으면
+     버튼 모양이 배경에 묻힌다. 상태별로 굵기 대신 밝기로 구분한다. */
+  --step-edge: rgba(255, 255, 255, 0.3);
+  --step-edge-hover: rgba(255, 255, 255, 0.52);
+  --step-edge-done: rgba(255, 255, 255, 0.42);
+  --step-edge-active: rgba(255, 255, 255, 0.58);
+  --step-edge-off: rgba(255, 255, 255, 0.14);
   --semantic-up: #05b169;
   --semantic-down: #cf202f;
   --accent-yellow: #f4b000;
@@ -261,13 +269,14 @@ table.vocab td.num,
   gap: 8px;
   height: 34px;
   padding: 0 14px 0 6px;
-  border: none;
+  border: 1px solid var(--step-edge);
   border-radius: var(--r-pill);
   background: transparent;
   color: var(--on-dark-soft);
   font-size: 14px;
   font-weight: 500;
-  transition: background 0.14s, color 0.14s, box-shadow 0.14s, transform 0.14s var(--ease-out);
+  transition: background 0.14s, border-color 0.14s, color 0.14s, box-shadow 0.14s,
+    transform 0.14s var(--ease-out);
 }
 
 /* 눌리는 순간 살짝 줄어야 인터페이스가 입력을 들었다는 느낌이 난다 */
@@ -291,6 +300,7 @@ table.vocab td.num,
 
 .step-chip:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.06);
+  border-color: var(--step-edge-hover);
   color: var(--on-dark);
 }
 
@@ -301,6 +311,7 @@ table.vocab td.num,
 
 .step-chip.done {
   background: rgba(255, 255, 255, 0.07);
+  border-color: var(--step-edge-done);
   color: var(--on-dark);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
@@ -312,6 +323,7 @@ table.vocab td.num,
 
 .step-chip.active {
   background: var(--primary);
+  border-color: var(--step-edge-active);
   color: var(--on-primary);
   font-weight: 600;
   box-shadow: 0 2px 10px rgba(0, 82, 255, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.22);
@@ -322,7 +334,10 @@ table.vocab td.num,
   color: var(--on-primary);
 }
 
+/* 아직 갈 수 없는 단계 — 점선으로 두면 색만으로 구분하지 않아도 알아볼 수 있다 */
 .step-chip:disabled {
+  border-style: dashed;
+  border-color: var(--step-edge-off);
   color: #5b616e;
   cursor: not-allowed;
 }
