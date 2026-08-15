@@ -161,7 +161,8 @@ check(
   JSON.stringify(ws.getRow(3).getCell(col('derivatives')).value)
 )
 check('파생어 셀 wrapText', ws.getRow(3).getCell(col('derivatives')).alignment?.wrapText === true)
-check('출처 셀', ws.getRow(4).getCell(col('source')).value === '지문 1', String(ws.getRow(4).getCell(col('source')).value))
+// 번호만 적는다. 칸 이름이 이미 "출처"라 "지문"을 덧붙일 이유가 없다.
+check('출처 셀', ws.getRow(4).getCell(col('source')).value === '1', String(ws.getRow(4).getCell(col('source')).value))
 check('반의어 셀', ws.getRow(4).getCell(col('antonyms')).value === 'keep track of time', String(ws.getRow(4).getCell(col('antonyms')).value))
 check('빈 반의어는 공란', !ws.getRow(3).getCell(col('antonyms')).value)
 
