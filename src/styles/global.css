@@ -646,6 +646,10 @@ table.vocab td.num,
 /**
  * keep-all 이 없으면 한글이 글자 단위로 끊겨 "올리 / 기" 처럼 쪼개진다.
  * 칸이 좁아 두 줄이 되는 것은 괜찮지만 어절 중간에서 잘리면 읽다가 걸린다.
+ *
+ * 다만 "파생어·유의어·반의어" 처럼 공백 없이 이어진 말은 keep-all 만 걸면
+ * 끊을 곳이 없어 칸 밖으로 삐져나간다. break-word 를 함께 둬서, 통째로는 못
+ * 들어가는 말에 한해 그때만 끊기게 한다.
  */
 .wb-label {
   margin-top: 5px;
@@ -653,6 +657,7 @@ table.vocab td.num,
   font-weight: 600;
   line-height: 1.35;
   word-break: keep-all;
+  overflow-wrap: break-word;
   color: var(--body);
 }
 

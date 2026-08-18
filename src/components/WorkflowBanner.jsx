@@ -18,7 +18,8 @@ const STEPS = [
       { key: 'ai', title: 'AI 자동 생성', icon: 'sparkles' },
     ],
   },
-  { no: '03', label: '파유반 생성' },
+  /* 실제 버튼(SelectionPanel)이 "파생어·유의어·반의어 생성 →" 이라 같은 말로 적는다 */
+  { no: '03', label: '파생어·유의어·반의어 생성' },
   { no: '04', label: '검수' },
   { no: '05', label: '단어시험 항목 배치' },
   { no: '06', label: '파트별 문항 생성' },
