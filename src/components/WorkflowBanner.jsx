@@ -105,13 +105,14 @@ function SparklesIcon() {
   )
 }
 
+/** 칩 안에서 11px 로 그려지므로 다른 아이콘(1.5)보다 굵게 잡아야 선이 남는다. */
 function ArrowIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.5"
+      strokeWidth="2.5"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
