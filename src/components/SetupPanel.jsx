@@ -4,6 +4,7 @@ import { splitMultiple, mergePassages, removePassage } from '../lib/passages.js'
 import { downloadText } from '../lib/exportXlsx.js'
 import { checkHealth } from '../lib/aiClient.js'
 import { useStore, DOC_TITLE_MAX } from '../store.js'
+import WorkflowBanner from './WorkflowBanner.jsx'
 
 const SPLIT_LABEL = {
   marker: '지문 번호 표시를 기준으로 나눴습니다',
@@ -148,10 +149,7 @@ export default function SetupPanel() {
   return (
     <div className="setup">
       <div className="setup-inner">
-        <p className="setup-lead">
-          지문 파일, 독해 문항 파일을 올린 후, 어휘를 직접 지정하거나 AI 자동지정으로 원하는 수의 표제 어휘를 만든 후,
-          JLS 표준 심화 단어장을 생성할 수 있습니다.
-        </p>
+        <WorkflowBanner />
 
         {/* 1. 파일 입력 */}
         <div

@@ -564,19 +564,184 @@ table.vocab td.num,
   background: var(--canvas);
 }
 
-/* hero-band-dark — 문서의 시그니처 패턴. 작업 화면이므로 밴드 높이를 눌러 쓴다. */
-/**
- * 검은 헤더 바로 아래 또 하나의 검은 밴드를 두면 두 면이 뭉쳐 화면이 무거워진다.
- * 어두운 면은 헤더 하나로 끝내고, 안내는 흰 캔버스 위 가운데 리드 문단으로 둔다.
- * 문단 폭을 620px로 묶는 것은 장식이 아니라 가독성 문제다 — 한 줄이 길면 눈이 다음 줄을 놓친다.
+/* ---- 작업 흐름 안내 스트립 (WorkflowBanner) ----
+ *
+ * 이 화면의 주인공은 지문 업로드 상자다. 안내는 그 앞에 한 번 읽고 지나가는
+ * 방향 표시라, 면을 크게 잡지 않고 한 줄로 눕혀 배경으로 물러나게 한다.
+ * 숫자만 브랜드 색으로 남기고 나머지는 muted 로 눌러, 훑을 때 번호가 먼저 걸리게 했다.
  */
-.setup-lead {
-  max-width: 620px;
-  margin: 0 auto;
-  text-align: center;
-  font-size: 17px;
-  line-height: 1.6;
+.wb {
+  /* 테두리 상자로 감싸면 그 자체가 또 하나의 카드가 된다. 위아래 실선만으로 영역을 표시한다. */
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  padding: var(--s-sm) 0;
+}
+
+.wb-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-xs);
+  margin-bottom: var(--s-sm);
+}
+
+/**
+ * 스트립 전체를 muted 로 눌러 둔 만큼, 이 꼬리표 하나는 브랜드 색을 꽉 채워 세운다.
+ * 안내 영역이 어디서 시작하는지 알리는 유일한 표지라 여기서까지 물러나면 그냥 흐릿한 줄이 된다.
+ * 대문자 영문은 자간을 벌려야 뭉쳐 보이지 않는다.
+ */
+.wb-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: var(--r-pill);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+.wb-flow {
+  display: grid;
+  /* 01·02 는 글자가 길고 02 는 갈래까지 달려서 조금 더 준다 */
+  grid-template-columns: 1.5fr 1.5fr repeat(5, 1fr);
+  align-items: start;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wb-cell {
+  display: flex;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.wb-body {
+  flex: 1;
+  min-width: 0;
+  border-left: 1px solid var(--hairline);
+  padding-left: var(--s-sm);
+}
+
+.wb-cell:first-child .wb-body {
+  border-left: 0;
+  padding-left: 0;
+  padding-right: var(--s-sm);
+}
+
+/* 단계 번호는 숫자라 모노 — 파일 상단 number-display 규칙을 따른다 */
+.wb-num {
+  display: block;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--primary);
+}
+
+/**
+ * keep-all 이 없으면 한글이 글자 단위로 끊겨 "올리 / 기" 처럼 쪼개진다.
+ * 칸이 좁아 두 줄이 되는 것은 괜찮지만 어절 중간에서 잘리면 읽다가 걸린다.
+ */
+.wb-label {
+  margin-top: 5px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  word-break: keep-all;
   color: var(--body);
+}
+
+/* 02 의 두 갈래. 카드였던 것을 줄글로 낮춰 스트립 높이를 넘기지 않게 한다. */
+.wb-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--s-xs);
+  margin-top: 4px;
+}
+
+.wb-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* 아이콘은 옆 글자와 같은 크기로 둬야 줄 안에서 튀지 않는다 */
+.wb-opt-icon {
+  display: block;
+  width: 13px;
+  height: 13px;
+  flex: none;
+  color: var(--primary);
+}
+
+.wb-opt-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/**
+ * 화살표는 칸 경계선 위에 올라앉아 선을 끊는다. 좌우 음수 마진으로 폭을 0 으로
+ * 만들어 그리드 칸의 실제 너비를 건드리지 않고, 배경색으로 뒤의 선을 지운다.
+ * 상자 배경이 없으므로 캔버스 색으로 지운다.
+ */
+.wb-arrow {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin: 1px -6px 0;
+  position: relative;
+  z-index: 1;
+  background: var(--canvas);
+  color: var(--muted-soft);
+}
+
+.wb-arrow svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* 좁은 화면에서는 일곱 칸이 글자당 두세 자로 쪼개진다. 줄을 나눠 접는다. */
+@media (max-width: 1100px) {
+  .wb-flow {
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--s-sm) 0;
+  }
+
+  /* 줄이 바뀌는 칸은 왼쪽 경계선과 화살표가 흐름을 거꾸로 읽히게 한다 */
+  .wb-cell:nth-child(4n + 1) .wb-arrow {
+    display: none;
+  }
+
+  .wb-cell:nth-child(4n + 1) .wb-body {
+    border-left: 0;
+    padding-left: 0;
+    padding-right: var(--s-sm);
+  }
+}
+
+@media (max-width: 700px) {
+  .wb-flow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .wb-cell:nth-child(odd) .wb-arrow {
+    display: none;
+  }
+
+  .wb-cell:nth-child(odd) .wb-body {
+    border-left: 0;
+    padding-left: 0;
+    padding-right: var(--s-sm);
+  }
 }
 
 .setup-inner {
@@ -589,22 +754,29 @@ table.vocab td.num,
 }
 
 /**
- * 텍스트 붙여넣기는 아래에 따로 패널이 열리므로 이 상자는 파일 하나만 받으면 된다.
- * 세로로 쌓으면 240px가 넘어 화면을 잡아먹는다 — 가로 한 줄로 눕혀 최소 높이로 둔다.
+ * 이 화면에서 사람이 가장 먼저 해야 할 한 가지다. 예전에는 리드 문단과 안내 배너에
+ * 자리를 내주느라 가로 한 줄로 눕혀 뒀는데, 그 둘을 걷어내고 이 상자를 세워 주인공으로 둔다.
+ * 세로로 쌓아 면적을 키우고 가운데로 모으면 화면에서 눈이 여기부터 닿는다.
+ *
+ * 점선 테두리는 장식이 아니라 관례다 — 실선 상자는 그냥 패널로 읽히지만
+ * 점선은 "여기에 끌어다 놓는 곳"이라는 뜻으로 통한다.
  */
 .dropzone {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--s-base);
+  justify-content: center;
+  gap: var(--s-sm);
+  min-height: 240px;
   /**
    * 회색 면은 흰 캔버스 위에서 "비활성"으로 읽힌다. 옅은 브랜드 틴트를 깔아
    * 눌러야 할 자리임을 알린다. 테두리와 배경 모두 같은 파랑에서 농도만 달리 가져간다.
    */
-  border: 1px solid rgba(0, 82, 255, 0.22);
-  border-radius: var(--r-lg);
+  border: 2px dashed rgba(0, 82, 255, 0.32);
+  border-radius: var(--r-xl);
   background: rgba(0, 82, 255, 0.045);
-  padding: var(--s-sm) var(--s-md);
-  text-align: left;
+  padding: var(--s-xxl) var(--s-lg);
+  text-align: center;
   cursor: pointer;
   transition: border-color 0.18s var(--ease-out), background 0.18s var(--ease-out);
 }
@@ -625,8 +797,8 @@ table.vocab td.num,
 }
 
 .dropzone .dz-icon svg {
-  width: 24px;
-  height: 24px;
+  width: 44px;
+  height: 44px;
 }
 
 .dropzone:hover .dz-icon,
@@ -634,22 +806,24 @@ table.vocab td.num,
   color: var(--primary);
 }
 
+/* 한 줄이 길면 눈이 다음 줄을 놓친다 — 가운데 정렬한 안내문의 폭을 묶어 둔다 */
 .dropzone .dz-text {
-  flex: 1;
+  max-width: 560px;
   min-width: 0;
 }
 
 .dropzone .dz-main {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 700;
   line-height: 1.35;
   color: var(--ink);
 }
 
 .dropzone .dz-sub {
-  margin-top: 2px;
+  margin-top: var(--s-xxs);
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 /**
@@ -658,6 +832,7 @@ table.vocab td.num,
  */
 .dropzone .dz-paste {
   flex-shrink: 0;
+  margin-top: var(--s-xxs);
   border: 1px solid var(--primary);
   background: var(--canvas);
   color: var(--ink);
